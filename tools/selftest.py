@@ -66,6 +66,10 @@ def main():
         with torch.no_grad():
             out_t = model(xt)[0].numpy().transpose(1, 2, 0)
 
+        if out_np.shape != out_t.shape:
+            failures.append(
+                f"shape mismatch on seed {seed}: numpy {out_np.shape} vs torch {out_t.shape}"
+            )
         d = float(np.abs(out_np - out_t).max())
         max_diff = max(max_diff, d)
         if d > 1e-4:

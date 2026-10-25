@@ -172,22 +172,38 @@ def _tex_flood(rng, h, w):
     and no model could resolve it from the two images alone. Real floods
     are turbid and brown, so the flood texture is deliberately muddier and
     warmer than the standing water it covers.
+
+    The horizontal ripple bands are what make the class *learnable* rather
+    than merely distinguishable: they are a texture cue that survives the
+    illumination and colour-cast differences between the two passes.
     """
     n = _fractal(h, w, rng, 4)
     img = np.zeros((h, w, 3), np.float32)
     img += np.array([86, 84, 62], np.float32)          # sediment-laden
     img += (n[..., None] - 0.5) * 34
+    ripple = np.sin(np.arange(h, dtype=np.float32)[:, None] / 3.5
+                    + np.arange(w, dtype=np.float32)[None, :] / 9.0) * 11
+    img += ripple[..., None]
     silt = (rng.random((h, w)) > 0.94)[..., None] * np.array([46, 38, 18], np.float32)
     return np.clip(img + silt, 0, 255)
 
 
 def _tex_excavation(rng, h, w):
     """Open-pit excavation: terraced, freshly cut, much brighter than
-    surrounding bare soil."""
+    surrounding bare soil.
+
+    The terraces are deliberately regular and horizontal. A real pit has
+    benches cut at intervals, and that regularity is the cue the network
+    can latch onto — an irregular blotch of brown would be
+    indistinguishable from the bare soil it replaces.
+    """
     img = np.zeros((h, w, 3), np.float32)
     img += np.array([176, 148, 104], np.float32)         # fresh cut earth
     terrace = np.sin(np.arange(h, dtype=np.float32)[:, None] / 5.0) * 30
     img += terrace[..., None]
+    # a sharp bench edge every ~15 rows
+    bench = ((np.arange(h) % 15) < 2)[:, None, None] * np.array([34, 28, 18], np.float32)
+    img += bench
     img += (rng.random((h, w, 1)) - 0.5) * 26
     return np.clip(img, 0, 255)
 
@@ -222,7 +238,14 @@ def _render_land(rng, lm, size):
 
 
 def _blob(rng, size):
-    """Soft-edged rotated ellipse as (mask, cy, cx)."""
+    """Soft-edged rotated ellipse as (mask, cy, cx).
+
+    The edge is deliberately not a step function. A hard boundary would be
+    unrealistically easy to segment (one pixel of contrast is all a local
+    filter needs) and would flatter the model. A partially-mixed edge is
+    what an actual footprint boundary looks like, and it is the case the
+    model has to work for.
+    """
     cy = rng.integers(0, size)
     cx = rng.integers(0, size)
     ry = rng.integers(int(size * 0.05), int(size * 0.15))
@@ -232,8 +255,9 @@ def _blob(rng, size):
     dy, dx = yy - cy, xx - cx
     u = dy * np.cos(ang) + dx * np.sin(ang)
     v = -dy * np.sin(ang) + dx * np.cos(ang)
-    d = (u / max(ry, 1)) ** 2 + (v / max(rx, 1)) ** 2
-    m = (d < 1.0).astype(np.float32)
+    d = np.sqrt((u / max(ry, 1)) ** 2 + (v / max(rx, 1)) ** 2)
+    # a soft ramp between 0.85 and 1.15 of the radius
+    m = np.clip((1.15 - d) / 0.30, 0.0, 1.0)
     m = cv2.GaussianBlur(m, (0, 0), 1.6)
     return m, cy, cx
 

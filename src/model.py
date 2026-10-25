@@ -27,11 +27,27 @@ STD = 0.25
 
 
 class ChangeNet(nn.Module):
+    """A small fully-convolutional change detector.
+
+    The third convolution is **dilated** (dilation=2, 5x5 kernel). That is
+    not decoration: a change region can be 40 pixels across, and three
+    plain 3x3 convolutions only see a 7x7 neighbourhood. The dilated layer
+    widens the receptive field to 15x15 for one extra parameter cost, which
+    is what lets the network recognise a *shape* (a terrace, a road, a
+    burn scar) rather than just a local colour difference.
+
+    Architecture (kept in lock-step with src/infer.py):
+        conv3x3(6 -> 16)   -> ReLU
+        conv3x3(16 -> 16)  -> ReLU
+        conv3x3(d=2)(16 -> 16) -> ReLU
+        conv1x1(16 -> 7)
+    """
+
     def __init__(self, n_classes=N_CLASSES, width=16):
         super().__init__()
         self.c1 = nn.Conv2d(6, width, 3, padding=1)
         self.c2 = nn.Conv2d(width, width, 3, padding=1)
-        self.c3 = nn.Conv2d(width, width, 3, padding=1)
+        self.c3 = nn.Conv2d(width, width, 3, padding=2, dilation=2)
         self.head = nn.Conv2d(width, n_classes, 1)
         self.act = nn.ReLU(inplace=True)
 
