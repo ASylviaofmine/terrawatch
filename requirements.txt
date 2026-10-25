@@ -1,12 +1,12 @@
-# Runtime dependencies for the deployed web app.
+# Runtime dependencies for the DEPLOYED web app (server.py).
 #
-# Deliberately minimal: no torch, no scipy. The trained weights are exported
-# to runs/weights.npz and the forward pass is re-implemented in numpy
-# (src/infer.py), which tools/selftest.py asserts matches the PyTorch model
-# to within 1e-4.
+# Deliberately minimal: no PyTorch, no Gradio, no SciPy. The trained weights
+# are exported to runs/weights.npz and the forward pass is re-implemented in
+# numpy (src/infer.py), which tools/selftest.py asserts matches the PyTorch
+# model to within 1e-4.
 #
 #   pip install -r requirements.txt
+#   python server.py
 
 numpy>=1.26
 pillow>=10.0
-gradio>=4.0

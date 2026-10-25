@@ -1,11 +1,13 @@
-# Training-only dependencies (not needed to run the web app).
+# Extra dependencies for the LOCAL Gradio demo (app.py) and for training.
 #
-#   pip install -r requirements.txt -r requirements-train.txt
+#   pip install -r requirements.txt -r requirements-extra.txt
 #
 # torch: install the CUDA build from the PyTorch wheel index matching your
 # CUDA version, otherwise torch.cuda.is_available() returns False.
 #
 #   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
 
+gradio>=4.0
 torch>=2.4
 matplotlib>=3.8
+opencv-python>=4.9

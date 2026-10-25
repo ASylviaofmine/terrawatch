@@ -118,19 +118,27 @@ runs the *same model*, not an approximation of it.
 ```bash
 git clone git@github.com:ASylviaofmine/terrawatch.git
 cd terrawatch
-pip install -r requirements.txt      # numpy, pillow, gradio — no torch
-python app.py
+pip install -r requirements.txt      # numpy + pillow only — the server needs nothing else
+python server.py                     # -> http://localhost:8000
 ```
 
-Open <http://127.0.0.1:7860>, upload the two images, press **Detect
-changes**.
+Open <http://localhost:8000>, upload the two images, press **Detect
+changes**. The bundled example buttons fill the pair in for you.
+
+There is also a **Gradio** version of the same demo, which is nicer for
+local experimentation:
+
+```bash
+pip install -r requirements.txt -r requirements-extra.txt
+python app.py                        # -> http://127.0.0.1:7860
+```
 
 The trained weights are committed, so there is nothing to train to try it.
 
 ### Training it yourself
 
 ```bash
-pip install -r requirements.txt -r requirements-train.txt
+pip install -r requirements.txt -r requirements-extra.txt
 python tools/train.py --steps 3000 --batch 16
 python tools/selftest.py             # numpy == torch
 python tools/evaluate.py --n 200     # the tables below

@@ -64,21 +64,18 @@ def predict_scene(before, after, weights, kind):
 
 def evaluate(weights, kind, n, seed0, size=SIZE):
     inter = np.zeros((7, 7), np.int64)  # rows = truth, cols = pred
-    probs_by_class = {c: [] for c in range(1, 7)}
-    truths_by_class = {c: [] for c in range(1, 7)}
     for i in range(n):
         s = generate_scene(seed0 + i, size=size)
-        seg, prob = predict_scene(s["before"], s["after"], weights, kind)
+        seg, _ = predict_scene(s["before"], s["after"], weights, kind)
         t = s["truth"]
-        flat_t = t.reshape(-1)
-        flat_p = seg.reshape(-1)
-        np.add.at(inter, (flat_t, flat_p), 1)
-        for c in range(1, 7):
-            tm = t == c
-            if tm.any():
-                pc = prob[tm][:, c]
-                truths_by_class[c].append(pc)
-    return inter, truths_by_class
+        # bincount over truth*7+pred -- the vectorised equivalent of a
+        # double loop over pixels, and ~100x faster than np.add.at here.
+        joint = np.bincount(
+            (t.reshape(-1).astype(np.int64) * 7 + seg.reshape(-1).astype(np.int64)),
+            minlength=49,
+        )
+        inter += joint.reshape(7, 7)
+    return inter, {}
 
 
 def metrics_from_confusion(inter):

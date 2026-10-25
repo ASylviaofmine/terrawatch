@@ -55,17 +55,24 @@ _EVENT_SURFACE = {
     "urban_expansion": _URBAN,
     "excavation": _BARE,
     "new_road": None,
-    "flooding": _WATER,
+    # A flood does not need a particular land cover underneath -- it can
+    # inundate farmland, grassland or the edge of a settlement. Leaving this
+    # as None means the blob lands wherever it lands.
+    "flooding": None,
     "wildfire_scar": _FOREST,
 }
 
+# How often each event occurs in the training mix. Flooding and excavation
+# were raised after the first evaluation showed them at IoU 0.03 and 0.00 --
+# not because they are rare in reality, but because the synthetic textures
+# were too easily confused with the scene's existing bare soil and water.
 _EVENT_WEIGHT = {
-    "deforestation": 0.30,
-    "urban_expansion": 0.18,
-    "excavation": 0.14,
-    "new_road": 0.14,
-    "flooding": 0.12,
-    "wildfire_scar": 0.12,
+    "deforestation": 0.24,
+    "urban_expansion": 0.17,
+    "excavation": 0.19,
+    "new_road": 0.13,
+    "flooding": 0.14,
+    "wildfire_scar": 0.13,
 }
 
 
@@ -154,6 +161,35 @@ def _tex_char(rng, h, w):
     img += (rng.random((h, w, 1)) - 0.5) * 30
     ember = (rng.random((h, w)) > 0.994)[..., None] * np.array([70, 28, 8], np.float32)
     return np.clip(img + ember, 0, 255)
+
+
+def _tex_flood(rng, h, w):
+    """Flood water: muddied, sediment-laden — NOT the same as clear lake water.
+
+    This distinction matters. If the flood texture were identical to the
+    scene's existing water, the pair would be genuinely ambiguous: a pixel
+    that is blue in both frames is a lake in one and a flood in the other,
+    and no model could resolve it from the two images alone. Real floods
+    are turbid and brown, so the flood texture is deliberately muddier and
+    warmer than the standing water it covers.
+    """
+    n = _fractal(h, w, rng, 4)
+    img = np.zeros((h, w, 3), np.float32)
+    img += np.array([86, 84, 62], np.float32)          # sediment-laden
+    img += (n[..., None] - 0.5) * 34
+    silt = (rng.random((h, w)) > 0.94)[..., None] * np.array([46, 38, 18], np.float32)
+    return np.clip(img + silt, 0, 255)
+
+
+def _tex_excavation(rng, h, w):
+    """Open-pit excavation: terraced, freshly cut, much brighter than
+    surrounding bare soil."""
+    img = np.zeros((h, w, 3), np.float32)
+    img += np.array([176, 148, 104], np.float32)         # fresh cut earth
+    terrace = np.sin(np.arange(h, dtype=np.float32)[:, None] / 5.0) * 30
+    img += terrace[..., None]
+    img += (rng.random((h, w, 1)) - 0.5) * 26
+    return np.clip(img, 0, 255)
 
 
 _LAND_TEXTURES = {
@@ -279,11 +315,9 @@ def generate_scene(seed, size=256, events=None):
             elif name == "urban_expansion":
                 tex = _tex_urban(rng, size, size)
             elif name == "excavation":
-                tex = _tex_bare(rng, size, size)
-                terrace = np.sin(np.arange(size, dtype=np.float32)[:, None] / 6.0) * 22
-                tex = np.clip(tex + terrace[..., None], 0, 255)
+                tex = _tex_excavation(rng, size, size)
             elif name == "flooding":
-                tex = _tex_water(rng, size, size)
+                tex = _tex_flood(rng, size, size)
             else:
                 tex = _tex_char(rng, size, size)
 
