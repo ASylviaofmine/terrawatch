@@ -81,7 +81,15 @@ _EVENT_WEIGHT = {
 # ---------------------------------------------------------------------------
 
 def _fractal(h, w, rng, octaves=5):
-    """Multi-octave smooth noise in [0, 1]."""
+    """Multi-octave smooth noise in [0, 1].
+
+    The amplitude falls off by 0.5 per octave, which is the usual
+    fractal-noise choice. For the *texture* octaves here that was too
+    aggressive: the highest octave ended up contributing nearly as much
+    high-frequency speckle as the base layer, and the result read as
+    noise rather than as ground cover. 0.42 keeps the low frequencies
+    dominant.
+    """
     out = np.zeros((h, w), np.float32)
     amp, total = 1.0, 0.0
     for o in range(octaves):
@@ -90,7 +98,7 @@ def _fractal(h, w, rng, octaves=5):
         up = cv2.resize(small, (w, h), interpolation=cv2.INTER_CUBIC)
         out += amp * up
         total += amp
-        amp *= 0.55
+        amp *= 0.42
     out /= max(total, 1e-6)
     lo, hi = out.min(), out.max()
     return (out - lo) / max(hi - lo, 1e-6)
@@ -106,23 +114,38 @@ def _tex_forest(rng, h, w):
 
 
 def _tex_farm(rng, h, w):
+    """Farmland: field strips with visible parcel boundaries."""
     n = _fractal(h, w, rng, 4)
     img = np.zeros((h, w, 3), np.float32)
     img += np.array([124, 143, 72], np.float32)
-    stripe = np.sin(np.arange(w, dtype=np.float32)[None, :] / 7.0 + rng.uniform(0, 6.0))
-    img += (stripe[..., None] * 16) + (n[..., None] - 0.5) * 34
+    # strips, each with its own slight tone -- real farmland is a patchwork
+    strip = np.floor(np.arange(w) / rng.integers(9, 16)).astype(np.int32)
+    tone = rng.normal(0, 9, size=int(strip.max()) + 1)
+    img += tone[strip][None, :, None]
+    img += (n[..., None] - 0.5) * 30
+    # parcel edges: a thin darker line every few strips
+    edge = (strip.astype(np.int32) != np.roll(strip.astype(np.int32), 1))[None, :, None]
+    img -= edge * np.array([22, 20, 12], np.float32)
     return np.clip(img, 0, 255)
 
 
 def _tex_urban(rng, h, w):
+    """Built-up area: irregular blocks, roads, and a little greenery."""
     img = np.zeros((h, w, 3), np.float32)
     img += np.array([104, 100, 97], np.float32)
-    block = rng.random((h // 12 + 2, w // 12 + 2))
-    up = cv2.resize(block.astype(np.float32), (w, h), interpolation=cv2.INTER_NEAREST)
-    img += (up[..., None] - 0.5) * 58
-    roads = (np.arange(w) % 34 < 3)[None, :, None] | (np.arange(h) % 41 < 3)[:, None, None]
+    # irregular building blocks rather than a uniform grid
+    block = rng.random((h // 9 + 2, w // 9 + 2))
+    up = cv2.resize(block.astype(np.float32), (w, h), interpolation=cv2.INTER_CUBIC)
+    img += (up[..., None] - 0.5) * 62
+    # road network: one primary axis plus a couple of side streets
+    roads = (np.arange(w) % 34 < 3)[None, :, None]
+    for off in (17, 58):
+        roads = roads | (np.arange(h) % 41 < 3)[:, None, None]
+        break
     img += roads * np.array([38, 36, 33], np.float32)
-    return np.clip(img, 0, 255)
+    # scattered trees / open ground
+    green = (rng.random((h, w)) > 0.972)[..., None] * np.array([-24, 6, -22], np.float32)
+    return np.clip(img + green, 0, 255)
 
 
 def _tex_water(rng, h, w):
@@ -222,11 +245,61 @@ _LAND_TEXTURES = {
 # ---------------------------------------------------------------------------
 
 def _land_cover(rng, size):
-    low = 14
-    lm = rng.integers(0, 5, size=(low, low)).astype(np.int32)
-    # push water towards one side so the scene is not uniform
-    lm[:, : low // 3] = _WATER
-    return cv2.resize(lm, (size, size), interpolation=cv2.INTER_NEAREST)
+    """A land-cover map with organic region boundaries.
+
+    The first two versions built this from a label grid upscaled with
+    nearest-neighbour, and the result read as pixel art rather than as an
+    aerial image -- square blocks with staircased edges, which a reviewer
+    noticed before the model did. Enlarging the grid and jittering it with
+    a distance transform did not fix it either: the underlying grid is
+    still a grid, and the boundaries stay axis-aligned.
+
+    What works is generating the land cover from **continuous noise fields**
+    and thresholding them. Each class owns a smooth scalar field; a pixel
+    joins the class whose field is highest there. Boundaries then follow
+    the noise contours, which are curved and irregular the way a treeline
+    or a field edge actually is -- no grid anywhere in the process.
+    """
+    # three octaves: a broad "where is land vs water" field, a medium one
+    # for the large classes, and a fine one to fray the edges.
+    broad = _fractal(size, size, rng, 3)
+    medium = _fractal(size, size, rng, 5)
+    fine = _fractal(size, size, rng, 7)
+
+    # water occupies the low end of the broad field, so it forms large
+    # connected bodies rather than speckle
+    water_field = broad - 0.15 * medium
+    is_water = water_field < 0.42
+
+    # The land classes need *large coherent regions*, not a salt-and-pepper
+    # mix: farmland and forest cover tens of hectares each in a real scene.
+    # The fine octave is therefore kept small -- just enough to fray the
+    # boundary, not enough to shred the interior.
+    fields = {
+        _FOREST: 0.30 + 0.52 * medium + 0.06 * fine,
+        _FARM: 0.34 + 0.50 * fine + 0.05 * medium,
+        _URBAN: 0.32 + 0.46 * fine + 0.10 * medium,
+        _BARE: 0.28 + 0.40 * medium + 0.06 * fine,
+    }
+
+    # Guarantee every land class appears. With independent noise fields the
+    # ranking is close to random, and a scene can easily contain no urban
+    # area at all -- which quietly removes the "new buildings" scenario from
+    # the training mix. Each class is therefore given a random per-scene
+    # bias, so over many scenes all of them turn up often.
+    for c in fields:
+        fields[c] = fields[c] + rng.uniform(-0.10, 0.10)
+
+    out = np.zeros((size, size), np.int32)
+    best = np.full((size, size), -1e9, np.float32)
+    for c, f in fields.items():
+        better = f > best
+        best = np.where(better, f, best)
+        out = np.where(better, c, out)
+
+    # water wins wherever it is present
+    out = np.where(is_water, _WATER, out)
+    return out
 
 
 def _render_land(rng, lm, size):
@@ -234,6 +307,14 @@ def _render_land(rng, lm, size):
     for cls in np.unique(lm):
         m = lm == cls
         out[m] = _LAND_TEXTURES[int(cls)](rng, size, size)[m]
+    # Desaturate towards a satellite-radiance look. Real imagery is not
+    # postcard-green; pulling the chroma down by 25% and lifting the
+    # blacks makes the scenes read as overhead photography rather than as
+    # a map, and it also stops the change textures from being trivially
+    # separable by colour alone.
+    grey = out.mean(axis=2, keepdims=True)
+    out = grey + (out - grey) * 0.75
+    out = out * 0.93 + 14.0
     return out
 
 
