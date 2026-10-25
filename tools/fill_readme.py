@@ -141,6 +141,23 @@ def main():
     if MARKER not in text:
         raise SystemExit(f"marker {MARKER} not found in README.md")
     text = text.replace(MARKER, "\n".join(rows))
+
+    # The headline table at the top is filled from the same metrics file,
+    # so it cannot drift away from the measured results.
+    headline = (
+        f"| **Change IoU** (any change vs none) | **{ev['change_iou']:.3f}** on "
+        f"{ev['n_scenes']} held-out scenes |\n"
+        f"| **Human-made vs natural** | **{ev['human_vs_natural_accuracy'] * 100:.1f}%** "
+        "accuracy |\n"
+        f"| **Pixel accuracy** | **{ev['pixel_accuracy'] * 100:.1f}%** |"
+    )
+    text = re.sub(
+        r"\| \*\*Change IoU\*\*.*?\| \*\*Pixel accuracy\*\* \| \*\*[^*]+\*\* \|",
+        headline,
+        text,
+        flags=re.S,
+    )
+
     README.write_text(text, encoding="utf-8")
     print(f"README results section filled ({len(rows)} lines)")
 

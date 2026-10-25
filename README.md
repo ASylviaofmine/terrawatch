@@ -8,6 +8,18 @@ Upload the earlier and the later image of the same ground. TerraWatch marks
 what changed, says *which kind* of change it is, and writes a short report
 you could hand to a reviewer.
 
+**▶ [Live demo](https://terrawatch-change-detection.app.workbuddy.host/?sharecode=WSQ674JJXR)**
+— upload a pair, or click a bundled example.
+**[Watch the 17-second demo video](docs/demo.mp4)**.
+
+| | |
+| --- | --- |
+| **Change IoU** (any change vs none) | **0.827** on 200 held-out scenes |
+| **Human-made vs natural** | **76.7%** accuracy |
+| **Pixel accuracy** | **98.8%** |
+| **Model** | 5,639 parameters, one forward pass |
+| **Deployment** | numpy only — no PyTorch in the serving path |
+
 ```
    earlier acquisition            later acquisition
         (256×256 RGB)                  (256×256 RGB)
@@ -16,7 +28,7 @@ you could hand to a reviewer.
                           │  6 channels
                     conv3×3 + ReLU
                     conv3×3 + ReLU
-                    conv3×3 + ReLU
+                conv3×3(dilation=2) + ReLU
                     conv1×1  → 7 classes per pixel
                           │
               ┌───────────┴───────────┐

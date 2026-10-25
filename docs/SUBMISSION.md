@@ -18,14 +18,22 @@
 
 | 字段 | 填写内容 |
 | --- | --- |
-| **Live Project Link** | `<部署后的线上地址>` |
+| **Live Project Link** | `https://terrawatch-change-detection.app.workbuddy.host/?sharecode=WSQ674JJXR` |
 | **GitHub Repository Link** | `https://github.com/ASylviaofmine/terrawatch` |
 | **Video Explanation Link** | `<docs/demo.mp4 上传后的链接（B 站 / YouTube Unlisted）>` |
 
-> ⚠️ **提交前逐个点开这三个链接。** 提交表单要填的是能打开的地址，不是"应该能打开"的地址。
-> 如果线上部署来不及，先用 `https://github.com/ASylviaofmine/terrawatch` 里的
-> `docs/demo.mp4` 顶上去，同时在表单的 Description 里说明线上地址将补上——
-> 但**优先把线上部署搞定**，因为 "Live Project Link" 是评审清单上的独立一项。
+> ✅ **线上地址已部署并逐项验证过**：健康检查返回 `{"status":"ok","classes":7}`，
+> 首页 200，样本图 200，七个样本的 `/api/detect` 全部返回正确分类
+> （deforestation / urban expansion / excavation / flooding / wildfire /
+> new road / clean 无变化）。
+>
+> 📌 **视频还需要你上传**：`docs/demo.mp4`（17 秒，1280×720，带字幕）
+> 已经在仓库里，但提交表单要的是一个**能打开的链接**。传到 B 站或
+> YouTube（设为 Unlisted）后把链接填进第三行。
+>
+> 💡 如果时间来不及，第三行可以先填仓库里 `docs/demo.mp4` 的
+> GitHub 链接 <https://github.com/ASylviaofmine/terrawatch/blob/master/docs/demo.mp4>
+> —— 它能打开，但评委无法在线播放，体验差一些。**优先上传到视频平台。**
 
 ---
 
@@ -87,15 +95,20 @@ entirely new is prohibited.*
 TerraWatch — surface change detection between two satellite acquisitions.
 
 The problem: given two images of the same ground, months apart, a human can
-say "the forest is gone" — but not at scale, not with a measurement, and
-not with any distinction between human-driven and natural change.
+say "the forest is gone" — but not at scale, not with a measurement, and not
+with any distinction between human-driven and natural change.
 
-The solution: a small fully-convolutional network (5,923 parameters) that
+The solution: a small fully-convolutional network (5,639 parameters) that
 takes BOTH frames stacked channel-wise and emits 7 per-pixel logits in one
 forward pass: no-change, deforestation, urban expansion, excavation, new
 road, flooding, wildfire scar. The output is a highlighted change map plus
-an automated incident report that states the changed area, the confidence,
-and whether the change is human-made or natural.
+an automated incident report stating the changed area, the confidence, and
+whether the change is human-made or natural.
+
+Measured on 200 held-out synthetic scenes: change IoU 0.827, pixel accuracy
+98.8%, human-made vs natural 76.7%. Per-class IoU: new road 0.915,
+wildfire scar 0.751, deforestation 0.611, excavation 0.569, flooding 0.557,
+urban expansion 0.348.
 
 What makes it credible:
 - The model is trained on procedurally generated scenes with EXACT pixel
@@ -103,11 +116,14 @@ What makes it credible:
 - The deployment runs numpy only — no PyTorch in the serving path — and
   tools/selftest.py asserts the numpy forward pass matches the PyTorch model
   to < 1e-4, so the hosted demo runs the same model, not an approximation.
-- The demo also shows the negative case (unchanged ground) and the
-  limitations are stated explicitly in the README rather than omitted.
+- The README documents the two data bugs the first evaluation exposed
+  (excavation and flooding scored IoU 0.03 and 0.00 because their textures
+  were indistinguishable from the scene's existing bare soil and water),
+  the fix, and the limits of the synthetic training source.
+- The demo shows the negative case: unchanged ground produces no false alarm.
 
-Stack: Python, PyTorch (training), NumPy (inference), Pillow, Gradio,
-Matplotlib, OpenCV. Training: 3,000 steps on an RTX 4060 Laptop GPU.
+Stack: Python, PyTorch (training), NumPy (inference), Pillow, Matplotlib,
+OpenCV. Training: 2,200 steps on an RTX 4060 Laptop GPU, 16 minutes.
 ```
 
 ---
@@ -124,15 +140,29 @@ Matplotlib, OpenCV. Training: 3,000 steps on an RTX 4060 Laptop GPU.
 
 ## 7. 提交前的最后检查清单
 
-- [ ] 三个链接逐个点开，都能打开
-- [ ] `docs/demo.mp4` 已上传，且**视频里有声音或字幕**（评委不会静音看图）
-- [ ] README 首屏有：一张图、一张表、一句结论
-- [ ] README 里的每个数字都能在仓库里找到出处（`runs/metrics.json`、`runs/eval/metrics.json`）
-- [ ] Pre-Built Disclosure 已如实填写 —— **这一栏被抓到造假会直接取消资格**
-- [ ] 仓库是 Public，评委不需要登录
-- [ ] `runs/weights.npz` 已经提交（否则别人克隆下来跑不起来）
-- [ ] 赛题要求的 track 已选对（SpaceTech & Satellite Intelligence）
-- [ ] 在提交页确认所有字段都填了 —— **空字段 = 提交被判不完整 = 不进评审**
+- [x] 线上地址已部署并验证（健康检查 / 首页 / 样本图 / 七个样本的检测全部通过）
+- [x] GitHub 仓库是 Public，评委不需要登录
+- [x] `runs/weights.npz` 已提交（否则别人克隆下来跑不起来）
+- [x] README 首屏有：图、表、结论、一句话数据
+- [x] README 里的每个数字都能在仓库里找到出处（`runs/metrics.json`、`runs/eval/metrics.json`）
+- [x] Pre-Built Disclosure 已如实填写
+- [ ] **`docs/demo.mp4` 上传到视频平台，把链接填进表单第三行** ← 剩下的唯一一件事
+- [ ] 提交页所有字段都填了 —— **空字段 = 提交被判不完整 = 不进评审**
+- [ ] 赛题 track 选对了（SpaceTech & Satellite Intelligence）
+
+### 如果只剩 15 分钟
+
+按这个顺序做，每一步都只要一两分钟：
+
+1. 把 `docs/demo.mp4` 传到 B 站（或 YouTube Unlisted），复制链接。
+2. 打开 Unstop 的提交表单，逐格粘贴三个链接。
+3. 复制 `docs/SUBMISSION.md` §5 的描述文本粘贴进描述框。
+4. Tools Used 复制 §3 的两段。
+5. Pre-Built Disclosure 复制 §4。
+6. **逐格确认没有空格**，点提交。
+
+**不要在这个环节改代码。** 代码已经能跑、线上已经能开、视频已经剪好。
+最后这段时间改任何一行代码都是给自己制造风险。
 
 ---
 

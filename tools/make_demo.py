@@ -12,6 +12,7 @@ is in docs/DEMO_SCRIPT.md.
 """
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -169,11 +170,57 @@ def main():
 
         add(img, hold=args.fps * 2)
 
+    # ---- the failure case ------------------------------------------------
+    clean_before = np.asarray(Image.open(SAMPLES / "clean_before.png").convert("RGB"))
+    clean_after = np.asarray(Image.open(SAMPLES / "clean_after.png").convert("RGB"))
+    cseg, _ = infer.predict(clean_before, clean_after, weights)
+    img = Image.new("RGB", (W, H), BG)
+    d = ImageDraw.Draw(img)
+    _text(d, (40, 30), "The negative case", f_head, FG)
+    _text(d, (40, 68), "Two acquisitions of unchanged ground. The model reports nothing.",
+          f_small, MUTED)
+    img.paste(_fit_panel(clean_before), (40, 120))
+    img.paste(_fit_panel(clean_after), (400, 120))
+    img.paste(_fit_panel(np.asarray(_overlay(clean_before, cseg))), (760, 120))
+    _text(d, (40, 452), "BEFORE", f_small, MUTED)
+    _text(d, (400, 452), "AFTER", f_small, MUTED)
+    _text(d, (760, 452), "DETECTED", f_small, ACCENT)
+    _text(d, (40, 520), "Changed area", f_body, MUTED)
+    _text(d, (40, 550), "0.00%", f_head, (95, 205, 130))
+    _text(d, (40, 600), "No false alarm on unchanged ground.", f_small, MUTED)
+    add(img, hold=args.fps * 2)
+
+    # ---- the measured numbers -------------------------------------------
+    eval_json = ROOT / "runs" / "eval" / "metrics.json"
+    if eval_json.exists():
+        m = json.loads(eval_json.read_text())
+        img = Image.new("RGB", (W, H), BG)
+        d = ImageDraw.Draw(img)
+        _text(d, (60, 60), "Measured on held-out scenes", f_title, FG)
+        _text(d, (60, 120), f"{m['n_scenes']} synthetic scenes from a seed range the model never saw",
+              f_small, MUTED)
+        y = 185
+        for name, d_ in m["per_class"].items():
+            if name == "no change":
+                continue
+            iou = d_["iou"]
+            bar = int((iou or 0) * 260)
+            col = (86, 204, 242)
+            d.rectangle([60, y + 4, 60 + bar, y + 20], fill=col)
+            _text(d, (340, y), name.replace("_", " ").title(), f_body, FG)
+            _text(d, (700, y), f"IoU {iou:.3f}", f_body, FG if iou and iou > 0.5 else (240, 136, 51))
+            y += 40
+        _text(d, (60, y + 20),
+              f"Change IoU {m['change_iou']:.3f}  ·  pixel accuracy {m['pixel_accuracy'] * 100:.1f}%  ·  "
+              f"human-vs-natural {m['human_vs_natural_accuracy'] * 100:.1f}%",
+              f_body, ACCENT)
+        add(img, hold=args.fps * 3)
+
     # ---- final: the pipeline ------------------------------------------
     img, d = frame_title(f_title, f_body, "One forward pass, four steps", None)
     steps = [
         "1.  Stack the two acquisitions channel-wise (6 channels).",
-        "2.  Three 3x3 convolutions + one 1x1 head -> 7-class logits per pixel.",
+        "2.  Three convolutions + one 1x1 head -> 7-class logits per pixel.",
         "3.  Argmax gives the change map: no-change or one of six change types.",
         "4.  Group by origin: human-made vs natural. Write the report.",
     ]
@@ -183,6 +230,7 @@ def main():
         y += 52
     _text(d, (70, y + 40), "Deployed with numpy only — no PyTorch in the serving path.", f_small, MUTED)
     _text(d, (70, y + 72), "Verified equal to the PyTorch model to 1e-4 by tools/selftest.py.", f_small, MUTED)
+    _text(d, (70, y + 112), "github.com/ASylviaofmine/terrawatch", f_small, ACCENT)
     add(img, hold=args.fps * 3)
 
     # ---- write the video ------------------------------------------------
