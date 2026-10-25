@@ -1,5 +1,19 @@
 # YouTube 上传操作指南（Demo Video Link 怎么填）
 
+> ## ✅ 已完成
+>
+> **视频链接：** `https://youtu.be/gpFW010gmpE`
+> **可见性：** 不公开（Unlisted）—— 搜不到，但拿到链接的人都能看
+>
+> 提交表单的 **Demo Video Link** 一格填上面这个链接即可。
+> 线上 App 的首页也已经内嵌了同一个视频（`youtube-nocookie.com/embed/gpFW010gmpE`）。
+>
+> 视频的源文件仍在仓库里（`docs/demo.mp4`），万一需要重新上传不会丢。
+>
+> ---
+>
+> 下面是原始的操作步骤，保留作为参考。
+
 > 结论先说：**YouTube 是最稳的选择，但不是唯一选择。**
 > 下面先讲为什么，再给 YouTube 的完整步骤，最后给两个不上传 YouTube 的备选。
 

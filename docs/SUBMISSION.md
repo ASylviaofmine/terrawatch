@@ -20,20 +20,18 @@
 | --- | --- |
 | **Live Project Link** | `https://terrawatch-change-detection.app.workbuddy.host/?sharecode=WSQ674JJXR` |
 | **GitHub Repository Link** | `https://github.com/ASylviaofmine/terrawatch` |
-| **Video Explanation Link** | `<docs/demo.mp4 上传后的链接（B 站 / YouTube Unlisted）>` |
+| **Demo Video Link** | `https://youtu.be/gpFW010gmpE` |
 
-> ✅ **线上地址已部署并逐项验证过**：健康检查返回 `{"status":"ok","classes":7}`，
-> 首页 200，样本图 200，七个样本的 `/api/detect` 全部返回正确分类
-> （deforestation / urban expansion / excavation / flooding / wildfire /
-> new road / clean 无变化）。
+> ✅ **三个链接全部就绪并已验证**：
+> - 线上地址：健康检查返回 `{"status":"ok","classes":7}`，首页 200，样本图 200，
+>   七个样本的 `/api/detect` 全部返回正确分类（deforestation / urban expansion /
+>   excavation / flooding / wildfire / new road / clean 无变化），首页内嵌视频播放器。
+> - GitHub：17 次提交，工作树干净，从零 `git clone` 后可直接运行（`CLONE RUNS OK`）。
+> - YouTube：已上传为「不公开」，链接可直接播放；App 首页也内嵌了同一个视频。
 >
-> 📌 **视频还需要你上传**：`docs/demo.mp4`（22 秒，1280×720，带字幕）
-> 已经在仓库里，但提交表单要的是一个**能打开的链接**。传到 B 站或
-> YouTube（设为 Unlisted）后把链接填进第三行。
->
-> 💡 如果时间来不及，第三行可以先填仓库里 `docs/demo.mp4` 的
-> GitHub 链接 <https://github.com/ASylviaofmine/terrawatch/blob/master/docs/demo.mp4>
-> —— 它能打开，但评委无法在线播放，体验差一些。**优先上传到视频平台。**
+> 📌 **视频的原始文件**仍在仓库里：
+> <https://github.com/ASylviaofmine/terrawatch/blob/master/docs/demo.mp4>
+> —— 万一 YouTube 需要重新上传，源文件在，不会丢。
 
 ---
 
@@ -150,22 +148,39 @@ OpenCV. Training: 2,000 steps on an RTX 4060 Laptop GPU.
 - [x] README 首屏有：图、表、结论、一句话数据
 - [x] README 里的每个数字都能在仓库里找到出处（`runs/metrics.json`、`runs/eval/metrics.json`）
 - [x] Pre-Built Disclosure 已如实填写
-- [ ] **`docs/demo.mp4` 上传到视频平台，把链接填进表单第三行** ← 剩下的唯一一件事
+- [x] **视频已上传 YouTube（不公开），链接 `https://youtu.be/gpFW010gmpE`**
+- [ ] **提交前用无痕窗口点一遍三个链接**（这一步 30 秒，能挡掉 90% 的意外）
 - [ ] 提交页所有字段都填了 —— **空字段 = 提交被判不完整 = 不进评审**
 - [ ] 赛题 track 选对了（SpaceTech & Satellite Intelligence）
+
+### 提交时逐格粘什么
+
+```
+Project Name                     → tools/form_text.py 的第 1 段
+Problem Statement                → 第 2 段
+Live Project Link                → 第 3 段
+GitHub Repository Link           → 第 4 段
+Demo Video Link                  → 第 5 段
+Technologies and AI Tools Used   → 第 6 段
+Pre-Built Disclosure             → 第 7 段
+Project Description              → 第 8 段
+Team Name / Members / Email      → 你的信息
+```
+
+`python tools/form_text.py` 会一次打印全部八段，并标出每段的字符数
+（都 ≤ 500，页面右下角也显示 "Remaining characters"）。
 
 ### 如果只剩 15 分钟
 
 按这个顺序做，每一步都只要一两分钟：
 
-1. 把 `docs/demo.mp4` 传到 B 站（或 YouTube Unlisted），复制链接。
-2. 打开 Unstop 的提交表单，逐格粘贴三个链接。
-3. 复制 `docs/SUBMISSION.md` §5 的描述文本粘贴进描述框。
-4. Tools Used 复制 §3 的两段。
-5. Pre-Built Disclosure 复制 §4。
-6. **逐格确认没有空格**，点提交。
+1. 打开 Unstop 提交表单，逐格粘贴。
+2. 复制 `docs/SUBMISSION.md` §5 的描述文本粘贴进描述框。
+3. Tools Used 复制 §3 的两段。
+4. Pre-Built Disclosure 复制 §4。
+5. **逐格确认没有空格**，点提交。
 
-**不要在这个环节改代码。** 代码已经能跑、线上已经能开、视频已经剪好。
+**不要在这个环节改代码。** 代码已经能跑、线上已经能开、视频已经传好。
 最后这段时间改任何一行代码都是给自己制造风险。
 
 ---

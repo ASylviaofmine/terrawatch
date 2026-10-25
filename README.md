@@ -10,8 +10,8 @@ you could hand to a reviewer.
 
 **▶ [Live demo](https://terrawatch-change-detection.app.workbuddy.host/?sharecode=WSQ674JJXR)**
 — upload a pair, or click a bundled example.
-**[Watch the demo video](docs/demo.mp4)** — 22 seconds, captioned, generated
-from the model's own output.
+**[Watch the demo video](https://youtu.be/gpFW010gmpE)** — 22 seconds,
+captioned, generated from the model's own output.
 
 | | |
 | --- | --- |

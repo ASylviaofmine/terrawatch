@@ -35,12 +35,8 @@ FIELDS = {
     "GitHub Repository Link": (
         "https://github.com/ASylviaofmine/terrawatch"
     ),
-
     "Demo Video Link": (
-        "https://terrawatch-change-detection.app.workbuddy.host/demo.mp4?sharecode=WSQ674JJXR\n\n"
-        "(Ready to use now - the video streams from the deployed app, and the app's "
-        "home page has a player for it. If you upload the file to YouTube as "
-        "Unlisted, replace this with the youtu.be link; see docs/YOUTUBE_UPLOAD.md.)"
+        "https://youtu.be/gpFW010gmpE"
     ),
 
     "Technologies and AI Tools Used": (
@@ -136,6 +132,28 @@ def main():
         print(f"!! fields over the limit: {', '.join(over)}")
     else:
         print("all fields within the 500-character limit")
+
+    print()
+    print("=" * 72)
+    print("YouTube title and description (if you want to edit the upload)")
+    print("=" * 72)
+    print(YOUTUBE_TITLE)
+    print()
+    print(YOUTUBE_DESCRIPTION)
+
+
+YOUTUBE_TITLE = "TerraWatch — Satellite Surface Change Detection | ORCATHON 2026"
+
+YOUTUBE_DESCRIPTION = """TerraWatch — surface change detection between two satellite acquisitions.
+
+Upload two images of the same ground, months apart. The model marks what changed, classifies each change as human-made (deforestation, urban expansion, excavation, new road) or natural (flooding, wildfire scar), and writes an automated incident report.
+
+Measured on 200 held-out synthetic scenes: change IoU 0.905, pixel accuracy 99.3%, human-made vs natural 88.1%.
+
+Live demo: https://terrawatch-change-detection.app.workbuddy.host/?sharecode=WSQ674JJXR
+Code: https://github.com/ASylviaofmine/terrawatch
+
+ORCA CODER · ORCATHON 2026 · SpaceTech & Satellite Intelligence track."""
 
 
 if __name__ == "__main__":
