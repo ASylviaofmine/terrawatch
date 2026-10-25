@@ -104,6 +104,19 @@
 
   <div class="ex" id="examples"></div>
 
+  <div class="card" id="videocard" style="display:none;margin-top:16px">
+    <h3 style="color:var(--fg);text-transform:none;letter-spacing:0;font-size:15px">Demo video</h3>
+    <video controls preload="none" style="width:100%;border-radius:8px;background:#000"
+           poster="/samples/new_road_before.png">
+      <source src="/demo.mp4" type="video/mp4">
+      Your browser cannot play the video. The file is at
+      <a href="/demo.mp4">/demo.mp4</a>.
+    </video>
+    <p class="muted" style="margin:10px 0 0;font-size:12.5px">
+      22 seconds &middot; every number and every highlighted region is the model's own output
+    </p>
+  </div>
+
   <div class="card" id="report" style="display:none">
     <h3 style="color:var(--fg);text-transform:none;letter-spacing:0;font-size:15px">Result</h3>
     <div class="stat" id="stats"></div>
@@ -127,6 +140,11 @@ let b64 = [null,null];
 
 document.getElementById("legend").innerHTML =
   LEGEND.map(([c,o])=>`<span><span class="swatch" style="background:${CLASS_COLORS[c]}"></span>${CLASS_LABELS[c]} <span class="muted">(${o})</span></span>`).join("");
+
+// show the video card once we know the file is actually there
+fetch("/demo.mp4", {method:"HEAD"}).then(r=>{
+  if (r.ok) document.getElementById("videocard").style.display="block";
+}).catch(()=>{});
 
 function setup(idx, dropId, imgId, fileId){
   const drop=document.getElementById(dropId);

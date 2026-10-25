@@ -171,11 +171,45 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def do_HEAD(self):
+        """HEAD is what a browser sends to check a file's size and type
+        before it decides to play it, and what the page uses to decide
+        whether to show the video card at all."""
+        if self.path in ("/", "/index.html"):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(PAGE)))
+            self.end_headers()
+        elif self.path in ("/demo.mp4", "/docs/demo.mp4"):
+            p = ROOT / "docs" / "demo.mp4"
+            if not p.exists():
+                self.send_response(404)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "video/mp4")
+            self.send_header("Content-Length", str(p.stat().st_size))
+            self.send_header("Accept-Ranges", "bytes")
+            self.end_headers()
+        elif self.path == "/api/health":
+            body = json.dumps({"status": "ok", "classes": len(CLASSES)})
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+        else:
+            self.send_response(404)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
     def do_GET(self):
         if self.path in ("/", "/index.html"):
             self._send(200, PAGE, "text/html; charset=utf-8")
         elif self.path == "/api/health":
             self._send(200, json.dumps({"status": "ok", "classes": len(CLASSES)}))
+        elif self.path in ("/demo.mp4", "/docs/demo.mp4"):
+            self._serve_video(ROOT / "docs" / "demo.mp4")
         elif self.path.startswith("/samples/"):
             name = self.path.split("/")[-1]
             p = ROOT / "docs" / "samples" / name
@@ -185,6 +219,56 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, p.read_bytes(), "image/png")
         else:
             self._send(404, json.dumps({"error": "not found"}))
+
+    def _serve_video(self, path):
+        """Serve the demo video with HTTP range support.
+
+        Range support is not optional for video: a browser seeks with
+        `Range: bytes=N-`, and a server that answers 200 to a ranged
+        request makes the player either refuse to seek or fail outright.
+        """
+        if not path.exists():
+            self._send(404, json.dumps({"error": "not found"}))
+            return
+        size = path.stat().st_size
+        rng = self.headers.get("Range")
+        start, end = 0, size - 1
+        status = 200
+        if rng and rng.startswith("bytes="):
+            spec = rng[6:].split("-")
+            try:
+                if spec[0]:
+                    start = int(spec[0])
+                if len(spec) > 1 and spec[1]:
+                    end = int(spec[1])
+            except ValueError:
+                start, end = 0, size - 1
+            if start >= size:
+                self.send_response(416)
+                self.send_header("Content-Range", f"bytes */{size}")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            end = min(end, size - 1)
+            status = 206
+
+        length = end - start + 1
+        self.send_response(status)
+        self.send_header("Content-Type", "video/mp4")
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Content-Length", str(length))
+        if status == 206:
+            self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        self.end_headers()
+        with path.open("rb") as fh:
+            fh.seek(start)
+            remaining = length
+            while remaining > 0:
+                chunk = fh.read(min(64 * 1024, remaining))
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+                remaining -= len(chunk)
 
     def do_POST(self):
         if self.path != "/api/detect":
