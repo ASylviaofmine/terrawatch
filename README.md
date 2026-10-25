@@ -65,6 +65,36 @@ result nobody uses.
 
 ## 2. Method
 
+### 2.0 What it does, in pictures
+
+Each triptych below is the **earlier acquisition**, the **later
+acquisition**, and the **model's own overlay** — all produced by the
+committed weights, not drawn by hand.
+
+#### Deforestation — human-made
+
+![Deforestation detected](docs/figures/case_deforestation.png)
+
+#### Urban expansion — human-made
+
+![Urban expansion detected](docs/figures/case_urban_expansion.png)
+
+#### Excavation — human-made
+
+![Excavation detected](docs/figures/case_excavation.png)
+
+#### New road — human-made
+
+![New road detected](docs/figures/case_new_road.png)
+
+#### Flooding — natural
+
+![Flooding detected](docs/figures/case_flooding.png)
+
+#### Wildfire scar — natural
+
+![Wildfire scar detected](docs/figures/case_wildfire.png)
+
 ### 2.1 One network, not a pipeline of heuristics
 
 The whole model is a small fully-convolutional network that takes **both
@@ -468,27 +498,37 @@ the demo-video-as-a-deliverable approach. The code here is new.
 
 ```
 terrawatch/
-├── app.py                  Gradio web demo (the deliverable)
+├── server.py              the deployed app: stdlib HTTP + a single-page UI
+├── app.py                 the same thing in Gradio, for local use
+├── web/index.html         the self-contained UI (no framework, no CDN)
 ├── src/
 │   ├── synth.py            synthetic satellite scene generator + ground truth
 │   ├── model.py            PyTorch network, weight export
-│   └── infer.py            numpy-only inference (used by the deployed app)
+│   └── infer.py            numpy-only inference (what the server runs)
 ├── tools/
 │   ├── train.py            training loop
 │   ├── evaluate.py         metrics, confusion matrix, per-class table
 │   ├── selftest.py         numpy == torch, determinism, class-range checks
+│   ├── fill_readme.py      writes §5 of this README from the metrics file
+│   ├── reproduce.py        runs all of the above in one command
 │   ├── make_samples.py     regenerate the demo sample pairs
 │   ├── make_figures.py     README figures
 │   ├── make_demo.py        render docs/demo.mp4
-│   └── gen_dataset.py      pre-generate a scene cache
+│   ├── gen_dataset.py      pre-generate a scene cache
+│   └── quick_train.py      a fast fallback training run
+├── .run/                   PyCharm run configurations
 ├── docs/
 │   ├── samples/            before / after / truth triples
 │   ├── figures/            README figures
-│   └── demo.mp4            submission video
+│   ├── demo.mp4            the submission video
+│   ├── DEMO_SCRIPT.md      how to add narration to the video
+│   └── SUBMISSION.md       what to type into the submission form
 ├── runs/
 │   ├── weights.npz         exported weights (what the app loads)
+│   ├── model.pt            torch checkpoint (for the equivalence check)
 │   └── metrics.json        training-time metrics
-└── requirements.txt        runtime deps: numpy, pillow, gradio
+├── requirements.txt        runtime deps: numpy, pillow
+└── requirements-extra.txt  the local extras: gradio, torch, matplotlib
 ```
 
 ---

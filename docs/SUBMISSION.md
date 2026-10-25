@@ -105,25 +105,29 @@ road, flooding, wildfire scar. The output is a highlighted change map plus
 an automated incident report stating the changed area, the confidence, and
 whether the change is human-made or natural.
 
-Measured on 200 held-out synthetic scenes: change IoU 0.827, pixel accuracy
-98.8%, human-made vs natural 76.7%. Per-class IoU: new road 0.915,
-wildfire scar 0.751, deforestation 0.611, excavation 0.569, flooding 0.557,
-urban expansion 0.348.
+Measured on 200 held-out synthetic scenes — change IoU, pixel accuracy and
+the human-made-vs-natural accuracy are in the README §5, and the README's
+results section is generated from runs/eval/metrics.json rather than typed
+in, so every number there is the number the evaluation produced.
 
 What makes it credible:
-- The model is trained on procedurally generated scenes with EXACT pixel
-  ground truth, so every number in the README is measured, not estimated.
+- The training data is procedurally generated with EXACT pixel ground truth,
+  so precision/recall/IoU are real measurements rather than impressions.
 - The deployment runs numpy only — no PyTorch in the serving path — and
   tools/selftest.py asserts the numpy forward pass matches the PyTorch model
   to < 1e-4, so the hosted demo runs the same model, not an approximation.
-- The README documents the two data bugs the first evaluation exposed
-  (excavation and flooding scored IoU 0.03 and 0.00 because their textures
-  were indistinguishable from the scene's existing bare soil and water),
-  the fix, and the limits of the synthetic training source.
+- The hosted app is a stdlib HTTP server with a self-contained page; the
+  only third-party packages in the serving path are numpy and Pillow.
+- The README documents the data bugs the evaluation exposed (excavation and
+  flooding first scored IoU 0.03 and 0.00 because their textures were
+  indistinguishable from the scene's existing bare soil and water; urban
+  expansion later collapsed to 0.07 for the same reason), the fixes, and the
+  limits of the synthetic training source.
 - The demo shows the negative case: unchanged ground produces no false alarm.
+- tools/reproduce.py regenerates every number in the README in one command.
 
 Stack: Python, PyTorch (training), NumPy (inference), Pillow, Matplotlib,
-OpenCV. Training: 2,200 steps on an RTX 4060 Laptop GPU, 16 minutes.
+OpenCV. Training: 2,000 steps on an RTX 4060 Laptop GPU.
 ```
 
 ---
