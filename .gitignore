@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Model artefacts — the weights ARE committed (runs/weights.npz is small and
+# is what the deployed app loads); only the torch checkpoint and the eval
+# scratch output are ignored.
+runs/model.pt
+runs/eval/
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
