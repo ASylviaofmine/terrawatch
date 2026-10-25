@@ -22,6 +22,8 @@ EVAL = ROOT / "runs" / "eval" / "metrics.json"
 TRAIN = ROOT / "runs" / "metrics.json"
 
 MARKER = "<!--RESULTS-->"
+START = "## 5. Results"
+END = "## 6. Limitations"
 
 
 def fmt(v, nd=3):
@@ -66,7 +68,7 @@ def main():
     tr = json.loads(TRAIN.read_text()) if TRAIN.exists() else {}
 
     rows = []
-    rows.append("### 4.1 Headline\n")
+    rows.append("### 5.1 Headline\n")
     rows.append("| Metric | Value |")
     rows.append("| --- | ---: |")
     rows.append(f"| Pixel accuracy | **{ev['pixel_accuracy'] * 100:.2f}%** |")
@@ -80,7 +82,7 @@ def main():
         rows.append(f"| Training time | {tr.get('train_seconds', '—')} s |")
     rows.append("")
 
-    rows.append("### 4.2 Per-class results\n")
+    rows.append("### 5.2 Per-class results\n")
     rows.append(
         "Measured on "
         f"**{ev['n_scenes']} held-out synthetic scenes** generated from a seed range "
@@ -95,7 +97,7 @@ def main():
         )
     rows.append("")
 
-    rows.append("### 4.3 Confusion matrix\n")
+    rows.append("### 5.3 Confusion matrix\n")
     rows.append("![Normalised confusion matrix](docs/figures/confusion.png)\n")
     rows.append(
         "*Rows are the true class, columns the predicted one, normalised "
@@ -103,14 +105,14 @@ def main():
         "column holds the miss rate.*\n"
     )
 
-    rows.append("### 4.4 What the model gets right and what it does not\n")
+    rows.append("### 5.4 What the model gets right and what it does not\n")
     rows.append("![Held-out examples](docs/figures/examples.png)\n")
     rows.append(
         "*Six held-out scenes, one per change type: the input pair and the "
         "model's own overlay. The colour key is the one the web app uses.*\n"
     )
 
-    rows.append("### 4.5 The deployment runs the same model\n")
+    rows.append("### 5.5 The deployment runs the same model\n")
     rows.append(
         "`tools/selftest.py` asserts that the numpy inference used by the "
         "hosted app produces the same output as the PyTorch model it was "
@@ -138,9 +140,21 @@ def main():
     rows.append("")
 
     text = README.read_text(encoding="utf-8")
-    if MARKER not in text:
-        raise SystemExit(f"marker {MARKER} not found in README.md")
-    text = text.replace(MARKER, "\n".join(rows))
+
+    # The section is replaced, not appended to, so the script is idempotent:
+    # running it twice leaves the same README. On the first run the marker
+    # is present; on later runs the section boundaries are.
+    if MARKER in text:
+        text = text.replace(MARKER, "\n".join(rows))
+    elif START in text and END in text:
+        head, rest = text.split(START, 1)
+        _, tail = rest.split(END, 1)
+        text = head + START + "\n" + "\n".join(rows) + "\n" + END + tail
+    else:
+        raise SystemExit(
+            f"neither the marker {MARKER} nor the section boundaries "
+            f"({START} ... {END}) were found in README.md"
+        )
 
     # The headline table at the top is filled from the same metrics file,
     # so it cannot drift away from the measured results.
