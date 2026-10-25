@@ -37,9 +37,10 @@ FIELDS = {
     ),
 
     "Demo Video Link": (
-        "https://github.com/ASylviaofmine/terrawatch/raw/master/docs/demo.mp4\n\n"
-        "(Replace with the B站 / YouTube Unlisted link after uploading; the video "
-        "is 22 s, 1280x720, captioned, rendered from the model's own output.)"
+        "https://terrawatch-change-detection.app.workbuddy.host/demo.mp4?sharecode=WSQ674JJXR\n\n"
+        "(Ready to use now - the video streams from the deployed app, and the app's "
+        "home page has a player for it. If you upload the file to YouTube as "
+        "Unlisted, replace this with the youtu.be link; see docs/YOUTUBE_UPLOAD.md.)"
     ),
 
     "Technologies and AI Tools Used": (
