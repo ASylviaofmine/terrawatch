@@ -51,14 +51,16 @@ ORDER = ["deforestation", "urban_expansion", "excavation", "new_road", "flooding
 
 
 def _overlay(before, seg):
-    arr = np.asarray(Image.fromarray(before).copy())
+    # .copy() matters: np.asarray on a PIL image can hand back a read-only
+    # buffer, and the in-place blend below would then fail.
+    arr = np.array(Image.fromarray(before).convert("RGB"), dtype=np.float32)
     for c in range(1, 7):
         m = seg == c
         if m.any():
-            arr[m] = (0.40 * arr[m] + 0.60 * np.array(
+            arr[m] = 0.40 * arr[m] + 0.60 * np.array(
                 tuple(int(CLASS_COLORS[c][i : i + 2], 16) for i in (1, 3, 5)), np.float32
-            )).astype(np.uint8)
-    return arr
+            )
+    return arr.astype(np.uint8)
 
 
 def pipeline_figure(path):

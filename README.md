@@ -63,14 +63,22 @@ pass.
 ```
 conv3×3(6 → 16) → ReLU
 conv3×3(16 → 16) → ReLU
-conv3×3(16 → 16) → ReLU
+conv3×3(dilation=2)(16 → 16) → ReLU
 conv1×1(16 → 7)
 ```
 
-**5,923 parameters.** It is small on purpose: the claim being made is that
+**5,639 parameters.** It is small on purpose: the claim being made is that
 the *pair* is the input, so the network learns "what changed" rather than
 "what does a forest look like". A larger model would do the same job with a
 larger download and a slower demo.
+
+**The dilated third layer is not decoration.** A change region can be 40
+pixels across, and three plain 3×3 convolutions only see a 7×7
+neighbourhood — enough to spot a local colour difference, but not enough to
+recognise a *shape*. Dilating the third layer widens the receptive field to
+15×15 for a handful of extra parameters, and it is what lets the network
+tell an excavation's regular benches from a road's straight edge from a
+fire's ragged edge.
 
 ### 2.2 Why a synthetic dataset, stated plainly
 
@@ -100,7 +108,42 @@ procedural, not Sentinel-2 radiance. The model has learned the *structure* of
 the task — pair-in, per-pixel-class-out — and has not learned real-world
 spectral signatures. §5 states what that costs.
 
-### 2.3 The deployment does not use PyTorch
+### 2.3 Two data bugs the evaluation caught
+
+The first evaluation of this model was the point where the project was
+actually built. Two classes came back at IoU **0.03** (excavation) and
+**0.00** (flooding), and the cause was not the network.
+
+**The excavation texture was the same bare soil the scene already
+contained**, and **the flood texture was the same clear water as the
+scene's lakes**. A pixel that is brown in both frames is bare soil in one
+acquisition and a fresh cut in the other; a pixel that is blue in both is a
+lake in one and a flood in the other. Those pairs are *genuinely ambiguous* —
+no model, however good, can resolve them from two images alone. The labels
+were wrong, not the network.
+
+The fix was in the data, and it is the kind of thing that only shows up if
+you measure:
+
+- `_tex_excavation` now renders bright, terraced, freshly-cut earth with
+  regular bench edges — distinct from the flat bare soil around it.
+- `_tex_flood` now renders sediment-laden, turbid water with ripple bands —
+  distinct from the clear standing water it covers.
+- Flooding no longer requires a water surface underneath, because a real
+  flood inundates farmland and grassland, not lakes.
+- The event mix was rebalanced toward the two weak classes.
+
+A third defect showed up in the same round: change regions were rendered
+with a **hard step boundary**, which one pixel of contrast is enough to
+segment. Real footprints have partially-mixed edges, so the boundary is now
+a soft ramp.
+
+And one more, from a different direction: the network's receptive field was
+7×7 while the change regions were up to 40 pixels across, so it could see a
+local colour difference but never a *shape*. Dilating the third convolution
+widened it to 15×15 (§2.1).
+
+### 2.4 The deployment does not use PyTorch
 
 A 6 MB model does not need a 2 GB framework in the serving path. The
 trained weights are exported to `runs/weights.npz` and the forward pass is
@@ -148,7 +191,57 @@ python tools/evaluate.py --n 200     # the tables below
 
 ## 4. Results
 
-<!--RESULTS-->
+### 4.1 Headline
+
+| Metric | Value |
+| --- | ---: |
+| Pixel accuracy | **98.77%** |
+| Change IoU (any change vs none) | **0.827** |
+| Human-made vs natural accuracy | **76.71%** |
+| Held-out scenes evaluated | 200 |
+| Parameters | 5,639 |
+| Training time | 949.2 s |
+
+### 4.2 Per-class results
+
+Measured on **200 held-out synthetic scenes** generated from a seed range disjoint from the training range — no scene can appear in both.
+
+| Class | IoU | Precision | Recall | F1 | Support (px) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| no change | 0.991 | 0.993 | 0.999 | 0.996 | 3,122,482 |
+| deforestation | 0.611 | 0.845 | 0.688 | 0.758 | 27,624 |
+| urban expansion | 0.348 | 0.703 | 0.408 | 0.517 | 17,076 |
+| excavation | 0.569 | 0.749 | 0.703 | 0.726 | 18,001 |
+| new road | 0.915 | 0.974 | 0.937 | 0.955 | 62,228 |
+| flooding | 0.557 | 0.766 | 0.671 | 0.716 | 19,327 |
+| wildfire scar | 0.751 | 0.877 | 0.840 | 0.858 | 10,062 |
+
+### 4.3 Confusion matrix
+
+![Normalised confusion matrix](docs/figures/confusion.png)
+
+*Rows are the true class, columns the predicted one, normalised row-wise. The diagonal is the recall of each class; the first column holds the miss rate.*
+
+### 4.4 What the model gets right and what it does not
+
+![Held-out examples](docs/figures/examples.png)
+
+*Six held-out scenes, one per change type: the input pair and the model's own overlay. The colour key is the one the web app uses.*
+
+### 4.5 The deployment runs the same model
+
+`tools/selftest.py` asserts that the numpy inference used by the hosted app produces the same output as the PyTorch model it was exported from — same shape, and a maximum absolute difference below 1e-4. The check exists because two shape bugs got through during development: `np.tensordot` returns the non-contracted axes of *both* operands, so the convolution produced `(H, W, 1, O)`, and torch stores a 1×1 kernel as `(O, C, 1, 1)` where the numpy head expected `(O, C)`. Neither raised an error; both produced plausible looking nonsense. The self-test now asserts shapes as well as values.
+
+```
+$ python tools/selftest.py
+weights identical to torch state dict: True
+numpy vs torch forward pass, max abs diff: 0.00e+00 (tol 1e-4)
+deterministic across repeated calls: True
+class map range: [0, 6] (expected [0, 6])
+
+all checks passed
+```
+
 
 ---
 
@@ -194,25 +287,40 @@ Stated up front rather than discovered by a reviewer.
 - The task framing: pair-in / per-pixel-class-out, the 7-class label
   scheme, and the human-made-vs-natural grouping that the report is built
   around.
-- `src/synth.py` — the entire scene generator: the five land-cover
-  texture families, the six change-event renderers, the illumination and
-  sensor-noise model, and the ground-truth bookkeeping. Including the two
-  bugs worth remembering: a `polylines` value of `1` divided by 255 gives a
-  mask of `0.0039`, which silently produced *zero* changed pixels in every
-  "new road" scene until the drawing value was corrected to 255; and a new
-  road is invisible unless the corridor in the *before* image is forced to
-  bare soil, because asphalt over asphalt is not a change.
+- `src/synth.py` — the entire scene generator: the five land-cover texture
+  families, the six change-event renderers, the illumination and
+  sensor-noise model, and the ground-truth bookkeeping. Including the four
+  bugs worth remembering, because each of them was found by measuring
+  rather than by reading the code:
+  - a `polylines` value of `1` divided by 255 gives a mask of `0.0039`,
+    which silently produced *zero* changed pixels in every "new road"
+    scene until the drawing value was corrected to 255;
+  - a new road is invisible unless the corridor in the *before* image is
+    forced to bare soil, because asphalt over asphalt is not a change;
+  - the excavation and flood textures were initially identical to the
+    bare soil and the lake water already in the scene, which made those
+    two classes unlearnable (§2.3);
+  - change regions were rendered with a hard step boundary, which is
+    unrealistically easy to segment.
 - `src/model.py` / `src/infer.py` — the network, and the numpy
-  re-implementation of its forward pass including the export format.
-- `src/synth.py`-driven training loop, the evaluation harness, the
-  confusion-matrix figure, the demo video renderer and the web app.
+  re-implementation of its forward pass including the export format. The
+  numpy version had **two shape bugs** that made every deployed prediction
+  wrong while looking perfectly plausible in a unit test: `np.tensordot`
+  keeps the non-contracted axes of both operands (so the convolution
+  returned `(H, W, 1, O)` instead of `(H, W, O)`), and torch stores a 1×1
+  kernel as `(O, C, 1, 1)` while the numpy head expected `(O, C)`. The
+  self-test now asserts shapes as well as values, which is what caught the
+  second one.
 - The decision that the deployment should not depend on PyTorch, and the
   self-test that makes that decision checkable rather than convenient.
+- The dilated third convolution, after the evaluation showed the network
+  could see a 7×7 neighbourhood while the change regions were 40 pixels
+  across.
 
 **AI-assisted** — the parts where I specified the intent and the tooling
 drafted the implementation: the initial skeleton of `tools/train.py` and
-`tools/evaluate.py`, the matplotlib figure styling, and the wording of
-this README.
+`tools/evaluate.py`, the matplotlib figure styling, the Gradio app layout,
+and the wording of this README.
 
 **Pre-existing work reused** — none of the three earlier repositories
 (`defect-detection`, `nemotron-nav-agent`, `robot-nav-sim`) contributed

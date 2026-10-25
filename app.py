@@ -85,26 +85,20 @@ def detect(before, after, min_area_frac=0.0015):
     seg, prob = infer.predict(b, a, weights)
 
     # --- overlay -----------------------------------------------------------
-    overlay = Image.fromarray(b.copy())
-    draw = ImageDraw.Draw(overlay, "RGBA")
-    change = seg > 0
+    # Blend the class colours onto the earlier frame, in one pass over a
+    # float copy. Doing it with PIL round-trips would be slower and easier
+    # to get wrong.
+    blend = b.astype(np.float32).copy()
     for cls_id in range(1, 7):
         mask = seg == cls_id
         if not mask.any():
             continue
-        colour = CLASS_COLORS[cls_id]
-        arr = np.asarray(overlay).copy()
-        arr[mask] = (
-            0.45 * arr[mask] + 0.55 * np.array(colour, np.float32)
-        ).astype(np.uint8)
-        overlay = Image.fromarray(arr)
-        draw = ImageDraw.Draw(overlay, "RGBA")
+        blend[mask] = (
+            0.45 * blend[mask] + 0.55 * np.array(CLASS_COLORS[cls_id], np.float32)
+        )
+    overlay = blend.astype(np.uint8)
 
-    # outline each detected region
-    ys, xs = np.nonzero(change)
-    if len(ys):
-        from scipy import ndimage  # noqa: PLC0415
-    # (scipy is optional; the contour walk below works without it)
+    change = seg > 0
 
     # --- per-class summary -------------------------------------------------
     total = seg.size

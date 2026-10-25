@@ -76,7 +76,6 @@ def analyse(before, after, min_area_frac=0.0015):
         if m.any():
             overlay[m] = 0.42 * overlay[m] + 0.58 * np.array(CLASS_COLORS[c], np.float32)
     overlay = overlay.astype(np.uint8)
-
     total = seg.size
     changed = seg > 0
     rows = []

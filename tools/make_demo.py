@@ -67,14 +67,14 @@ def _font(size):
 
 
 def _overlay(before, seg):
-    arr = np.asarray(Image.fromarray(before).copy())
+    # .astype() produces a fresh writable array; np.asarray on a PIL image
+    # can return a read-only buffer and the in-place blend below would fail.
+    arr = np.asarray(Image.fromarray(before).convert("RGB"), dtype=np.float32).copy()
     for c in range(1, 7):
         m = seg == c
         if m.any():
-            arr[m] = (0.42 * arr[m] + 0.58 * np.array(CLASS_COLORS[c], np.float32)).astype(
-                np.uint8
-            )
-    return Image.fromarray(arr)
+            arr[m] = 0.42 * arr[m] + 0.58 * np.array(CLASS_COLORS[c], np.float32)
+    return Image.fromarray(arr.astype(np.uint8))
 
 
 def _fit_panel(img, size=320):

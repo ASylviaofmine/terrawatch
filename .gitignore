@@ -4,11 +4,16 @@ __pycache__/
 .venv/
 venv/
 
-# Model artefacts — the weights ARE committed (runs/weights.npz is small and
-# is what the deployed app loads); only the torch checkpoint and the eval
-# scratch output are ignored.
-runs/model.pt
+# Model artefacts — both files are committed, because they are small and
+# because tools/selftest.py needs model.pt to prove the numpy inference
+# matches the PyTorch model it was exported from.
+#   runs/weights.npz   47 KB — what the deployed app loads
+#   runs/model.pt      26 KB — the torch checkpoint, for training and the
+#                        numpy-vs-torch equivalence check
+#
+# Only the evaluation scratch output is ignored.
 runs/eval/
+runs/train_log.txt
 
 # Editors
 .idea/
