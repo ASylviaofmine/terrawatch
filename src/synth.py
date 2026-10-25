@@ -107,9 +107,9 @@ def _fractal(h, w, rng, octaves=5):
 def _tex_forest(rng, h, w):
     n = _fractal(h, w, rng, 6)
     img = np.zeros((h, w, 3), np.float32)
-    img += np.array([26, 58, 30], np.float32)
+    img += np.array([46, 74, 42], np.float32)              # lit canopy
     img += (n[..., None] - 0.5) * 74
-    canopy = (rng.random((h, w)) > 0.982)[..., None] * np.array([46, 62, 26], np.float32)
+    canopy = (rng.random((h, w)) > 0.975)[..., None] * np.array([46, 62, 26], np.float32)
     return np.clip(img + canopy, 0, 255)
 
 
@@ -130,29 +130,39 @@ def _tex_farm(rng, h, w):
 
 
 def _tex_urban(rng, h, w):
-    """Built-up area: irregular blocks, roads, and a little greenery."""
+    """Built-up area: irregular blocks, roads, and a little greenery.
+
+    The buildings are made deliberately *lighter and greyer* than bare soil,
+    with bright roof speckle. Without that separation the urban texture is
+    just another brown, and the model cannot tell "new buildings" from
+    "bare ground" — which is exactly what happened when the land cover
+    changed to continuous noise fields (urban expansion dropped to IoU
+    0.07). A real built-up area is recognisably grey against its
+    surroundings.
+    """
     img = np.zeros((h, w, 3), np.float32)
-    img += np.array([104, 100, 97], np.float32)
+    img += np.array([112, 111, 110], np.float32)          # grey, not brown
     # irregular building blocks rather than a uniform grid
     block = rng.random((h // 9 + 2, w // 9 + 2))
     up = cv2.resize(block.astype(np.float32), (w, h), interpolation=cv2.INTER_CUBIC)
-    img += (up[..., None] - 0.5) * 62
-    # road network: one primary axis plus a couple of side streets
-    roads = (np.arange(w) % 34 < 3)[None, :, None]
-    for off in (17, 58):
-        roads = roads | (np.arange(h) % 41 < 3)[:, None, None]
-        break
-    img += roads * np.array([38, 36, 33], np.float32)
+    img += (up[..., None] - 0.5) * 40
+    # bright roofs: a cue for "buildings", but sparse -- at 4.5% density
+    # the area reads as a white speckle field rather than as a city.
+    roofs = (rng.random((h, w)) > 0.988)[..., None] * np.array([44, 44, 42], np.float32)
+    img += roofs
+    # road network: darker than the roofs, and continuous
+    roads = (np.arange(w) % 34 < 3)[None, :, None] | (np.arange(h) % 41 < 3)[:, None, None]
+    img -= roads * np.array([30, 28, 26], np.float32)
     # scattered trees / open ground
-    green = (rng.random((h, w)) > 0.972)[..., None] * np.array([-24, 6, -22], np.float32)
+    green = (rng.random((h, w)) > 0.972)[..., None] * np.array([-30, 4, -26], np.float32)
     return np.clip(img + green, 0, 255)
 
 
 def _tex_water(rng, h, w):
     n = _fractal(h, w, rng, 3)
     img = np.zeros((h, w, 3), np.float32)
-    img += np.array([20, 52, 104], np.float32)
-    img += (n[..., None] - 0.5) * 20
+    img += np.array([34, 68, 112], np.float32)             # lit water
+    img += (n[..., None] - 0.5) * 22
     return np.clip(img, 0, 255)
 
 
@@ -228,6 +238,29 @@ def _tex_excavation(rng, h, w):
     bench = ((np.arange(h) % 15) < 2)[:, None, None] * np.array([34, 28, 18], np.float32)
     img += bench
     img += (rng.random((h, w, 1)) - 0.5) * 26
+    return np.clip(img, 0, 255)
+
+
+def _tex_newbuild(rng, h, w):
+    """Fresh construction: bright concrete slabs and new roofs.
+
+    Deliberably different from _tex_urban (the older built-up fabric):
+    brighter, cleaner, with sharp-edged rectangles. A pair of images
+    showing "more buildings" is only distinguishable if the new buildings
+    look different from the old ones.
+    """
+    img = np.zeros((h, w, 3), np.float32)
+    img += np.array([146, 145, 141], np.float32)          # fresh concrete
+    # sharp-edged building blocks
+    bs = rng.integers(6, 13)
+    block = (rng.random((h // bs + 2, w // bs + 2)) > 0.42).astype(np.float32)
+    up = cv2.resize(block, (w, h), interpolation=cv2.INTER_NEAREST)
+    img += up[..., None] * np.array([22, 22, 20], np.float32)
+    # bright new roofs
+    roofs = (rng.random((h, w)) > 0.955)[..., None] * np.array([38, 38, 36], np.float32)
+    img += roofs
+    # bare ground between the buildings
+    img -= (1 - up[..., None]) * np.array([14, 12, 8], np.float32)
     return np.clip(img, 0, 255)
 
 
@@ -418,7 +451,12 @@ def generate_scene(seed, size=256, events=None):
             if name == "deforestation":
                 tex = _tex_stump(rng, size, size)
             elif name == "urban_expansion":
-                tex = _tex_urban(rng, size, size)
+                # NEW buildings, not more of the same: fresh concrete slabs
+                # and bright roofs, distinct from the older built-up fabric
+                # they are appearing next to. Without that distinction the
+                # pair is ambiguous -- new concrete and old concrete look
+                # the same in both frames.
+                tex = _tex_newbuild(rng, size, size)
             elif name == "excavation":
                 tex = _tex_excavation(rng, size, size)
             elif name == "flooding":
