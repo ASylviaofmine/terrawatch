@@ -63,6 +63,28 @@ FIELDS = {
         "web app are the author's own work."
     ),
 
+    "Team Members": (
+        "1 member (solo).\n"
+        "Name: <your name>\n"
+        "Email: <your email>\n"
+        "Role: Team Leader\n"
+        "GitHub: https://github.com/ASylviaofmine"
+    ),
+
+    "Contributions": (
+        "I designed, built, trained, evaluated and deployed TerraWatch end to end: "
+        "the synthetic satellite-data generator that gives the exact pixel ground "
+        "truth every number here is measured against, the 5,639-parameter change "
+        "model, the numpy-only inference used in production, the training loop, the "
+        "evaluation harness, the web app and the demo video. The measurements shaped "
+        "the work: the first evaluation gave excavation IoU 0.03 and flooding 0.00 "
+        "because those textures matched the bare soil and standing water already in "
+        "the scene - the image pairs were ambiguous by construction, so I fixed the "
+        "labels rather than the model. Disclosure: AI tools drafted parts of the "
+        "scripts and docs; the design, data generator, model, inference, evaluation "
+        "and web app are my own work."
+    ),
+
     "Project Description (long form)": (
         "TerraWatch takes two images of the same ground, months apart, and answers: "
         "where did the surface change, what kind was it, and is it human-driven or "
@@ -112,10 +134,43 @@ def fit(text, limit=MAX):
     return cut.rstrip(" ,;:.") + "...", True
 
 
+def fit_keeping_head(text, limit=MAX):
+    """Trim `text` to `limit` characters, never dropping the opening block.
+
+    For the contributions field the first block is the one that answers the
+    reviewer's actual question ("what did you build"), and the later
+    blocks are supporting detail. Trimming from the tail, as `fit` does,
+    would throw away the answer and keep the footnotes, so the opening is
+    pinned and the rest is added only while it fits.
+
+    Blocks are separated by blank lines, and the last block is dropped
+    whole if it does not fit -- a contribution narrative that ends
+    mid-sentence reads like a mistake.
+    """
+    if len(text) <= limit:
+        return text, False
+    blocks = text.split("\n\n")
+    out = blocks[0]
+    if len(out) >= limit:
+        cut = out[: limit - 1]
+        if " " in cut:
+            cut = cut[: cut.rfind(" ")]
+        return cut.rstrip(" ,;:.") + "...", True
+    for b in blocks[1:]:
+        candidate = out + "\n\n" + b
+        if len(candidate) > limit:
+            break
+        out = candidate
+    return out, True
+
+
 def main():
     over = []
     for name, raw in FIELDS.items():
-        text, trimmed = fit(raw)
+        # the contributions field must keep its opening paragraph, which is
+        # the part that answers "who did what"
+        fitter = fit_keeping_head if name == "Contributions" else fit
+        text, trimmed = fitter(raw)
         n = len(text)
         flag = ""
         if n > MAX:

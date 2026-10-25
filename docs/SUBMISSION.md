@@ -130,13 +130,80 @@ OpenCV. Training: 2,000 steps on an RTX 4060 Laptop GPU.
 
 ---
 
-## 6. Team Members
+## 6. Team Members & Contributions
+
+### 6.1 成员信息（逐格填）
 
 | 字段 | 填写内容 |
 | --- | --- |
-| Name | `<你的姓名>` |
+| Full Name | `<你的姓名>` |
 | Email | `<你的邮箱>` |
-| Role | `Solo — team leader and sole contributor` |
+| Team Role | `Team Leader — Solo (1 member)` |
+| GitHub | `https://github.com/ASylviaofmine` |
+| Country / City | `<你的国家 / 城市>` |
+
+> 📌 赛题允许 **1–3 人**，单人参赛是合规的。**不要为了"看起来像团队"而虚构成员**
+> —— 成员信息是要核验的，写假名字是硬伤。就写一个人，把贡献写扎实。
+>
+> 如果表单有 "Team Members" 列表只有一行，就填你自己。
+
+### 6.2 Contributions（贡献说明，直接粘 —— 495/500 字符）
+
+```
+I designed, built, trained, evaluated and deployed TerraWatch end to end: the synthetic data generator, the 5,639-parameter change model, numpy-only inference, the evaluation harness and web app. The measurements shaped it: the first evaluation gave excavation IoU 0.03 because its texture matched the bare soil in the scene, so the pairs were ambiguous and I fixed the labels, not the model. AI tools drafted some scripts and docs; the design, model and app are my own work.
+```
+
+### 6.3 完整版贡献说明（字数不限时用，或放进 README / 演讲稿）
+
+```
+Solo project — I designed, built, trained, evaluated and deployed
+TerraWatch end to end.
+
+What I wrote:
+- src/synth.py: the procedural satellite-scene generator. Five land-cover
+  texture families, six change-event renderers, a per-scene illumination
+  and sensor-noise model, and the ground-truth bookkeeping. This is the
+  piece that makes every number in the project a measurement rather than
+  an impression.
+- src/model.py: the 5,639-parameter network, and the dilated third layer
+  that widened the receptive field to 15x15 after the evaluation showed
+  the model could not see a 40-pixel change region.
+- src/infer.py: the numpy re-implementation of the forward pass, so the
+  deployed app ships no PyTorch.
+- server.py + web/index.html: the deployed app, a stdlib HTTP server
+  serving a self-contained page.
+- The training loop, the evaluation harness, the confusion matrix, the
+  README figures, the demo video and the submission documents.
+
+What the measurements changed:
+- The first evaluation returned IoU 0.03 for excavation and 0.00 for
+  flooding. The cause was in my data, not the model: those textures were
+  identical to the bare soil and the standing water already in the scene,
+  so the image pairs were ambiguous by construction. I fixed the labels.
+- A later rewrite of the land cover fixed the blocky look and quietly
+  broke urban expansion to 0.07 for the same reason. Fixed the labels
+  again.
+- The numpy port had two shape bugs that made every deployed prediction
+  wrong while looking plausible. The self-test now asserts shapes, not
+  just values.
+
+AI tools were used for drafting parts of the training/evaluation scripts,
+figure styling and README wording. The project design, data generator,
+model, inference implementation, evaluation harness and web app are my own
+work. This is disclosed in detail in the repository README.
+```
+### 6.4 为什么这么写
+
+评审看这一栏想知道三件事，这三段都答了：
+
+| 评审的疑问 | 你的回答落在哪 |
+|---|---|
+| 这活儿到底谁干的？ | 第一句"端到端由我完成"，且列出了具体模块 |
+| 工作量有多少？ | 逐个模块列出，并给出"改变了什么"的三个真实案例 |
+| 是不是套壳 / AI 生成的？ | 主动披露 AI 辅助范围 + 三个可验证的数据缺陷案例 |
+
+第三点尤其重要：**主动说"AI 帮我起草了脚本和文档，但设计和实现是我的"，
+比被评审问出来要好得多。** 规则要求披露预构建工作，隐瞒的风险远大于坦白的风险。
 
 ---
 
