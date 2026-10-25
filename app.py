@@ -253,4 +253,14 @@ synthetic pairs with exact ground truth.*
 
 
 if __name__ == "__main__":
-    demo = _make_demo().launch()
+    import os
+
+    # The PORT env var is set by the deployment host; 7860 is the local default.
+    port = int(os.environ.get("PORT", "7860"))
+    demo = _make_demo().launch(
+        server_name="0.0.0.0",
+        server_port=port,
+        share=False,
+        show_error=True,
+    )
+    print(f"\nTerraWatch is running on port {port}\n")

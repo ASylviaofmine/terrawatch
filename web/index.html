@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TerraWatch — Surface Change Detection</title>
+<style>
+  :root{
+    --bg:#0e1117; --panel:#161b24; --panel2:#1c2330; --line:#2a3441;
+    --fg:#e8ecf2; --muted:#8c96a5; --accent:#56ccf2;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+       font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{padding:26px 30px 18px;border-bottom:1px solid var(--line)}
+  h1{margin:0 0 6px;font-size:23px;letter-spacing:-.2px}
+  .sub{color:var(--muted);font-size:14px;max-width:860px}
+  .badge{display:inline-block;background:var(--panel2);border:1px solid var(--line);
+         color:var(--accent);border-radius:999px;padding:2px 11px;font-size:12px;margin-right:8px}
+  main{padding:24px 30px 60px;max-width:1400px;margin:0 auto}
+  .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .card h3{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted)}
+  .drop{position:relative;border:2px dashed var(--line);border-radius:10px;min-height:250px;
+        display:flex;align-items:center;justify-content:center;cursor:pointer;
+        background:var(--panel2);overflow:hidden;transition:border-color .15s}
+  .drop:hover{border-color:var(--accent)}
+  .drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
+  .drop img{width:100%;height:100%;object-fit:contain;display:none}
+  .drop .ph{color:var(--muted);font-size:13px;text-align:center;padding:16px;pointer-events:none}
+  .drop.has img{display:block}
+  .drop.has .ph{display:none}
+  #result .drop{border-style:solid;border-color:var(--accent)}
+  button{background:var(--accent);color:#05202b;border:0;border-radius:9px;padding:12px 22px;
+         font-size:15px;font-weight:600;cursor:pointer;margin-top:16px}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
+  .row{display:flex;align-items:center;margin-top:16px;flex-wrap:wrap;gap:12px}
+  .ex{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .ex button{background:var(--panel2);color:var(--fg);border:1px solid var(--line);
+             padding:6px 12px;font-size:12.5px;font-weight:500;margin:0;border-radius:7px}
+  #report{margin-top:20px}
+  #report h3{margin:0 0 10px;font-size:16px}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .swatch{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:8px;vertical-align:-1px}
+  .muted{color:var(--muted)}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:18px;font-size:12.5px;color:var(--muted)}
+  .stat{display:flex;gap:30px;flex-wrap:wrap;margin:14px 0 6px}
+  .stat div b{display:block;font-size:20px;color:var(--fg)}
+  .stat div span{font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+  .err{color:#f85149}
+  footer{padding:22px 30px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <h1>TerraWatch <span style="color:var(--muted);font-weight:400">— surface change detection between two satellite acquisitions</span></h1>
+  <div class="sub">
+    <span class="badge">7-class pixel segmentation</span>
+    <span class="badge">human-made vs natural</span>
+    <span class="badge">numpy-only inference</span>
+    Upload the <b>earlier</b> and the <b>later</b> image of the same ground.
+    The model marks what changed, classifies each change, and writes a report.
+  </div>
+</header>
+
+<main>
+  <div class="grid">
+    <div class="card">
+      <h3>Earlier acquisition</h3>
+      <label class="drop" id="d1">
+        <input type="file" id="f1" accept="image/*">
+        <div class="ph">click to upload<br><span style="font-size:11.5px">or drop an image here</span></div>
+        <img id="p1" alt="before">
+      </label>
+    </div>
+    <div class="card">
+      <h3>Later acquisition</h3>
+      <label class="drop" id="d2">
+        <input type="file" id="f2" accept="image/*">
+        <div class="ph">click to upload<br><span style="font-size:11.5px">or drop an image here</span></div>
+        <img id="p2" alt="after">
+      </label>
+    </div>
+    <div class="card">
+      <h3>Detected change</h3>
+      <div class="drop" id="result">
+        <div class="ph">the overlay appears here</div>
+        <img id="p3" alt="result">
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <button id="go" disabled>Detect changes</button>
+    <button class="ghost" id="clr">Clear</button>
+    <span class="muted" id="status"></span>
+  </div>
+
+  <div class="ex" id="examples"></div>
+
+  <div class="card" id="report" style="display:none">
+    <h3 style="color:var(--fg);text-transform:none;letter-spacing:0;font-size:15px">Result</h3>
+    <div class="stat" id="stats"></div>
+    <div id="rbody"></div>
+  </div>
+
+  <div class="legend" id="legend"></div>
+</main>
+
+<footer>
+  TerraWatch · ORCA CODER · ORCATHON 2026 · SpaceTech track ·
+  <a href="https://github.com/ASylviaofmine/terrawatch">github.com/ASylviaofmine/terrawatch</a>
+</footer>
+
+<script>
+const CLASS_COLORS = {1:"#e83e2c",2:"#f58a21",3:"#d6be3c",4:"#f0e25c",5:"#348ce2",6:"#9660c8"};
+const CLASS_LABELS = {1:"Deforestation",2:"Urban expansion",3:"Excavation",4:"New road",5:"Flooding",6:"Wildfire scar"};
+const LEGEND = [[1,"human-made"],[2,"human-made"],[3,"human-made"],[4,"human-made"],[5,"natural"],[6,"natural"]];
+
+let b64 = [null,null];
+
+document.getElementById("legend").innerHTML =
+  LEGEND.map(([c,o])=>`<span><span class="swatch" style="background:${CLASS_COLORS[c]}"></span>${CLASS_LABELS[c]} <span class="muted">(${o})</span></span>`).join("");
+
+function setup(idx, dropId, imgId, fileId){
+  const drop=document.getElementById(dropId);
+  const file=document.getElementById(fileId);
+  file.addEventListener("change", e=>{ if(e.target.files[0]) load(idx,e.target.files[0]); });
+  ["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.style.borderColor="#56ccf2";}));
+  ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.style.borderColor="";}));
+  drop.addEventListener("drop",e=>{ if(e.dataTransfer.files[0]) load(idx,e.dataTransfer.files[0]); });
+}
+function load(idx,file){
+  const fr=new FileReader();
+  fr.onload=()=>{
+    b64[idx]=fr.result.split(",")[1];
+    document.getElementById(idx===0?"p1":"p2").src=fr.result;
+    document.getElementById(idx===0?"d1":"d2").classList.add("has");
+    document.getElementById("go").disabled=!(b64[0]&&b64[1]);
+  };
+  fr.readAsDataURL(file);
+}
+setup(0,"d1","p1","f1"); setup(1,"d2","p2","f2");
+
+document.getElementById("go").addEventListener("click",async()=>{
+  const btn=document.getElementById("go"), st=document.getElementById("status");
+  btn.disabled=true; st.textContent="running the model…";
+  try{
+    const r=await fetch("/api/detect",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({before:b64[0],after:b64[1]})});
+    const j=await r.json();
+    if(j.error) throw new Error(j.error);
+    document.getElementById("p3").src="data:image/png;base64,"+j.overlay;
+    document.getElementById("result").classList.add("has");
+    document.getElementById("rbody").innerHTML=j.report;
+    const hum=j.rows.filter(x=>x.origin==="human-made").reduce((a,b)=>a+b.pixels,0);
+    const nat=j.rows.filter(x=>x.origin==="natural").reduce((a,b)=>a+b.pixels,0);
+    document.getElementById("stats").innerHTML=
+      `<div><b>${(j.changed_fraction*100).toFixed(2)}%</b><span>changed area</span></div>`+
+      `<div><b>${j.confidence.toFixed(3)}</b><span>confidence</span></div>`+
+      `<div><b>${hum.toLocaleString()}</b><span>human-made px</span></div>`+
+      `<div><b>${nat.toLocaleString()}</b><span>natural px</span></div>`;
+    document.getElementById("report").style.display="block";
+    st.textContent="done";
+  }catch(e){
+    st.innerHTML=`<span class="err">${e.message}</span>`;
+  }finally{ btn.disabled=false; }
+});
+
+document.getElementById("clr").addEventListener("click",()=>{ location.reload(); });
+
+(async()=>{
+  const names=["deforestation","urban_expansion","excavation","new_road","flooding","wildfire"];
+  const box=document.getElementById("examples");
+  for(const n of names){
+    const b=document.createElement("button");
+    b.textContent=n.replace("_"," ");
+    b.onclick=async()=>{
+      const g=async u=>{const r=await fetch(u);const bl=await r.blob();
+        return await new Promise(res=>{const fr=new FileReader();
+          fr.onload=()=>res(fr.result.split(",")[1]);fr.readAsDataURL(bl);});};
+      b64[0]=await g(`/samples/${n}_before.png`);
+      b64[1]=await g(`/samples/${n}_after.png`);
+      document.getElementById("p1").src="data:image/png;base64,"+b64[0];
+      document.getElementById("p2").src="data:image/png;base64,"+b64[1];
+      document.getElementById("d1").classList.add("has");
+      document.getElementById("d2").classList.add("has");
+      document.getElementById("go").disabled=false;
+      document.getElementById("go").click();
+    };
+    box.appendChild(b);
+  }
+})();
+</script>
+</body>
+</html>
