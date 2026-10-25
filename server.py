@@ -171,6 +171,58 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _youtube_meta(self):
+        """Fetch metadata for the submitted YouTube video via the public
+        oEmbed endpoint.
+
+        Two reasons this exists. It is a check that the submitted link
+        really is reachable and public -- a "Private" upload still returns
+        401 here, which is exactly the mistake this is meant to catch. And
+        the title and thumbnail it returns are what the page displays, so
+        the demo link in the README and the video shown on the page cannot
+        drift apart.
+        """
+        import urllib.parse
+        import urllib.request
+
+        vid = urllib.parse.parse_qs(
+            urllib.parse.urlparse(self.path).query
+        ).get("v", [""])[0]
+        if not vid:
+            vid = os.environ.get("YOUTUBE_VIDEO_ID", "")
+        if not vid:
+            self._send(400, json.dumps({"error": "no video id"}))
+            return
+        api = (
+            "https://www.youtube.com/oembed?url=https://youtu.be/"
+            + urllib.parse.quote(vid)
+            + "&format=json"
+        )
+        try:
+            req = urllib.request.Request(
+                api, headers={"User-Agent": "Mozilla/5.0 (compatible; terrawatch)"}
+            )
+            with urllib.request.urlopen(req, timeout=15) as r:
+                data = json.loads(r.read().decode("utf-8"))
+            self._send(
+                200,
+                json.dumps(
+                    {
+                        "ok": True,
+                        "video_id": vid,
+                        "title": data.get("title"),
+                        "author": data.get("author_name"),
+                        "thumbnail": data.get("thumbnail_url"),
+                        "url": f"https://youtu.be/{vid}",
+                    }
+                ),
+            )
+        except Exception as exc:
+            self._send(
+                502,
+                json.dumps({"ok": False, "error": f"{type(exc).__name__}: {exc}"}),
+            )
+
     def do_HEAD(self):
         """HEAD is what a browser sends to check a file's size and type
         before it decides to play it, and what the page uses to decide
@@ -208,6 +260,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, PAGE, "text/html; charset=utf-8")
         elif self.path == "/api/health":
             self._send(200, json.dumps({"status": "ok", "classes": len(CLASSES)}))
+        elif self.path.startswith("/api/youtube"):
+            self._youtube_meta()
         elif self.path in ("/demo.mp4", "/docs/demo.mp4"):
             self._serve_video(ROOT / "docs" / "demo.mp4")
         elif self.path.startswith("/samples/"):
