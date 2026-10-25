@@ -10,7 +10,8 @@ you could hand to a reviewer.
 
 **▶ [Live demo](https://terrawatch-change-detection.app.workbuddy.host/?sharecode=WSQ674JJXR)**
 — upload a pair, or click a bundled example.
-**[Watch the 17-second demo video](docs/demo.mp4)**.
+**[Watch the demo video](docs/demo.mp4)** — 22 seconds, captioned, generated
+from the model's own output.
 
 | | |
 | --- | --- |
@@ -424,10 +425,12 @@ Stated up front rather than discovered by a reviewer.
 9. **No confidence calibration.** The reported confidence is the mean
    softmax probability over changed pixels, which is a number, not a
    calibrated probability.
-10. **Urban expansion is the weakest class** (IoU 0.348). Built-up area
-    looks similar to bare ground in the synthetic textures, so the model
-    confuses the two — the same class of problem as the excavation and
-    flooding failures in §2.3, one level up in the texture hierarchy.
+10. **Excavation is the weakest class** (IoU 0.430). Its texture has the
+    least contrast against the surrounding bare soil, and the network has
+    to separate "a pit" from "a patch of dirt" using terrace edges alone.
+    The precision is high (0.917) and the recall is low (0.447), which is
+    the signature of a class the model finds where the evidence is strong
+    and abstains from where it is not.
 
 ---
 

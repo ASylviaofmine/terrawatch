@@ -27,7 +27,7 @@
 > （deforestation / urban expansion / excavation / flooding / wildfire /
 > new road / clean 无变化）。
 >
-> 📌 **视频还需要你上传**：`docs/demo.mp4`（17 秒，1280×720，带字幕）
+> 📌 **视频还需要你上传**：`docs/demo.mp4`（22 秒，1280×720，带字幕）
 > 已经在仓库里，但提交表单要的是一个**能打开的链接**。传到 B 站或
 > YouTube（设为 Unlisted）后把链接填进第三行。
 >
