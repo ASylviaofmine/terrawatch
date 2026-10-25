@@ -2,3 +2,5 @@ device=cuda  steps=2200  batch=16  size=128
 parameters=5639
 step     1/2200  loss 1.8234  lr 0.00008     1.8s
 step   200/2200  loss 0.1543  lr 0.00048   110.8s
+step   400/2200  loss 0.0535  lr 0.00136   225.5s
+step   600/2200  loss 0.3412  lr 0.00196   338.4s

@@ -100,13 +100,19 @@ landscape assembled from forest / farmland / urban / water / bare-soil
 textures, then a known change event is applied to produce the second
 acquisition:
 
+![Synthetic training scenes](docs/figures/terrain_final.png)
+
+*Three generated scenes: the earlier acquisition on the left, the later one
+on the right. The change events here are an excavation, a new building
+block, and a new road.*
+
 | Class | Event | Origin |
 | --- | --- | --- |
 | 1 | Deforestation — canopy replaced by stumps and bare soil | human-made |
 | 2 | Urban expansion — new buildings over open ground | human-made |
 | 3 | Excavation — terraced open pit | human-made |
 | 4 | New road — asphalt over bare ground | human-made |
-| 5 | Flooding — water spreading over the flood plain | natural |
+| 5 | Flooding — turbid water spreading over the flood plain | natural |
 | 6 | Wildfire scar — charred, darkened ground | natural |
 
 The second pass also gets its own **illumination, colour cast and sensor
@@ -190,11 +196,29 @@ python app.py                        # -> http://127.0.0.1:7860
 
 The trained weights are committed, so there is nothing to train to try it.
 
+### In PyCharm
+
+Open the folder **terrawatch** (File → Open, pick the directory itself, not
+the parent). The project ships six run configurations in `.run/`, so they
+appear in the run dropdown straight away:
+
+| Configuration | What it does |
+| --- | --- |
+| `demo: the hosted web app` | `server.py` — the same app that is online |
+| `demo: Gradio web app` | `app.py` — the Gradio version |
+| `selftest: numpy == torch` | `tools/selftest.py` — proves the deployed path is the trained model |
+| `evaluate: the measured results` | `tools/evaluate.py` — regenerates the tables in §4 |
+| `render: the demo video` | `tools/make_demo.py` — regenerates `docs/demo.mp4` |
+| `train: the model` | `tools/train.py` — the full training run |
+
+Point the interpreter at a Python 3.11+ with `numpy` and `pillow` for the
+server, or add `gradio` and `torch` for the rest.
+
 ### Training it yourself
 
 ```bash
 pip install -r requirements.txt -r requirements-extra.txt
-python tools/train.py --steps 3000 --batch 16
+python tools/train.py --steps 2200 --batch 16
 python tools/selftest.py             # numpy == torch
 python tools/evaluate.py --n 200     # the tables below
 ```
@@ -261,34 +285,42 @@ all checks passed
 
 Stated up front rather than discovered by a reviewer.
 
-1. **The training data is synthetic.** The textures are procedural, not
-   real satellite radiance. The measured numbers in §4 describe this
-   benchmark, not Sentinel-2 performance. The first thing to do with real
-   data is to fine-tune on it — the training script and the generator
-   interface are already separated for exactly that.
-2. **No geometric registration.** The two frames are assumed to be
+1. **The training data is synthetic.** The textures are procedurally
+   generated, not real satellite radiance. The measured numbers in §4
+   describe this benchmark, not Sentinel-2 performance. The first thing to
+   do with real data is to fine-tune on it — the training script and the
+   generator interface are already separated for exactly that.
+2. **The model has never seen a real satellite image.** It has learned
+   "forest canopy → stumps" and "clear water → turbid water", not
+   "NDVI drop of 0.3 with a corresponding increase in SWIR". The
+   transfer to real imagery is an assumption this project cannot test.
+3. **No geometric registration.** The two frames are assumed to be
    pixel-aligned. Real pairs need ortho-rectification and co-registration
    first, and a misalignment produces false positives at edges — this is
    the single biggest gap between the demo and production.
-3. **No multi-temporal context.** Exactly two passes. A third acquisition
+4. **No multi-temporal context.** Exactly two passes. A third acquisition
    would let the model distinguish a transient (flood, cloud shadow, haze)
    from a persistent change, which is the natural way to reduce false
    positives.
-4. **Cloud and shadow are not modelled.** They are the classic source of
+5. **Cloud and shadow are not modelled.** They are the classic source of
    false positives in real change detection, and the synthetic generator
    does not produce them at all.
-5. **Two change events can overlap.** When two events land on the same
+6. **Two change events can overlap.** When two events land on the same
    pixels, the later one overwrites the earlier in the ground truth, so the
    truth for the first event is partially lost.
-6. **The report is template-generated.** The classification is a model's
+7. **The report is template-generated.** The classification is a model's
    output; the prose that wraps it is a fixed template. There is no
    natural-language reasoning behind the verdict.
-7. **Single resolution.** The network is trained and evaluated at 128×128
+8. **Single resolution.** The network is trained and evaluated at 128×128
    and the demo resizes to 256. A large high-resolution scene is not
    handled; tiling and stitching would be needed.
-8. **No confidence calibration.** The reported confidence is the mean
+9. **No confidence calibration.** The reported confidence is the mean
    softmax probability over changed pixels, which is a number, not a
    calibrated probability.
+10. **Urban expansion is the weakest class** (IoU 0.348). Built-up area
+    looks similar to bare ground in the synthetic textures, so the model
+    confuses the two — the same class of problem as the excavation and
+    flooding failures in §2.3, one level up in the texture hierarchy.
 
 ---
 

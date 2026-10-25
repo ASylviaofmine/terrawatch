@@ -1,0 +1,13 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="evaluate: the measured results" type="PythonConfigurationType" factoryName="Python">
+    <module name="terrawatch" />
+    <option name="SCRIPT_NAME" value="$PROJECT_DIR$/tools/evaluate.py" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <option name="IS_MODULE_SDK" value="true" />
+    <option name="ADD_CONTENT_ROOTS" value="true" />
+    <option name="ADD_SOURCE_ROOTS" value="true" />
+    <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+    <option name="SCRIPT_PARAMS" value="--n 200 --seed 700000" />
+    <method v="2" />
+  </configuration>
+</component>
