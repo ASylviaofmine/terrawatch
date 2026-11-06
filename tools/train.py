@@ -46,12 +46,21 @@ def make_batch(seed, batch, size):
 
 @torch.no_grad()
 def evaluate(model, seed0, n, size, device, batch=8):
-    """Pixel accuracy and per-class IoU over a fixed evaluation set."""
+    """Pixel accuracy and per-class IoU over a fixed evaluation set.
+
+    The 7x7 confusion matrix is accumulated here rather than the
+    per-class intersection and union counts that used to be, because the
+    binary "did this pixel change" IoU needs quantities that only the
+    matrix carries -- in particular, how many pixels were predicted as
+    *some* change, as opposed to how many change pixels were classified
+    correctly. Mixing the two is what produced a change IoU of 0.838
+    where tools/evaluate.py measured 0.908 on the same scenes.
+
+    Every metric below is now derived from the matrix in exactly the way
+    tools/evaluate.py derives it, so the two cannot drift apart.
+    """
     model.eval()
-    inter = np.zeros(7, np.int64)
-    union = np.zeros(7, np.int64)
-    hit = np.zeros(7, np.int64)
-    total = np.zeros(7, np.int64)
+    confusion = np.zeros((7, 7), np.int64)
     correct = 0
     seen = 0
     for i in range(0, n, batch):
@@ -61,23 +70,32 @@ def evaluate(model, seed0, n, size, device, batch=8):
         truth = y.cpu().numpy()
         correct += int((pred == truth).sum())
         seen += truth.size
-        for c in range(7):
-            p, t = pred == c, truth == c
-            inter[c] += int((p & t).sum())
-            union[c] += int((p | t).sum())
-            hit[c] += int((p & t).sum())
-            total[c] += int(t.sum())
+        joint = np.bincount(
+            (truth.reshape(-1).astype(np.int64) * 7 + pred.reshape(-1).astype(np.int64)),
+            minlength=49,
+        )
+        confusion += joint.reshape(7, 7)
     model.train()
-    iou = np.where(union > 0, inter / np.maximum(union, 1), np.nan)
-    prec = np.where(total > 0, hit / np.maximum(total, 1), np.nan)
-    # binary "did this pixel change" view -- the question the product asks
-    bin_inter = int((inter[1:].sum()))
-    bin_union = int((union[1:].sum()))
+
+    tp = np.diag(confusion).astype(np.float64)
+    gt = confusion.sum(axis=1).astype(np.float64)
+    pred = confusion.sum(axis=0).astype(np.float64)
+    union = gt + pred - tp
+    iou = np.where(union > 0, tp / np.maximum(union, 1), np.nan)
+    prec = np.where(pred > 0, tp / np.maximum(pred, 1), np.nan)
+
+    # binary "did this pixel change" view -- the question the product asks.
+    # The numerator is the whole 6x6 block, not just its diagonal: a pixel
+    # whose truth is deforestation and whose prediction is urban expansion
+    # is still a correct detection of *something changed*.
+    change_inter = float(confusion[1:, 1:].sum())
+    change_union = float(confusion[1:, :].sum() + confusion[:, 1:].sum() - change_inter)
+
     return {
         "pixel_acc": correct / max(seen, 1),
         "per_class_iou": iou.tolist(),
         "per_class_precision": prec.tolist(),
-        "change_iou": bin_inter / max(bin_union, 1),
+        "change_iou": change_inter / max(change_union, 1),
     }
 
 

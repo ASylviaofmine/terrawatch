@@ -88,6 +88,16 @@ def main():
         f"**{ev['n_scenes']} held-out synthetic scenes** generated from a seed range "
         "disjoint from the training range — no scene can appear in both.\n"
     )
+    rows.append(
+        "> **Where these numbers live.** `runs/eval/metrics.json` is the source of "
+        "every figure in this section, and it is committed. `runs/metrics.json` is a "
+        "*different* measurement: the validation split seen during training "
+        f"(seed {tr.get('args', {}).get('val_seed', 900000)}, "
+        f"{tr.get('args', {}).get('val_n', 96)} scenes). Its per-class IoUs are "
+        "identical in method to the table below and its headline change IoU is "
+        "close, but it is a smaller sample from a different seed range. The "
+        "headline figures above are always the 200-scene held-out ones.\n"
+    )
     rows.append("| Class | IoU | Precision | Recall | F1 | Support (px) |")
     rows.append("| --- | ---: | ---: | ---: | ---: | ---: |")
     for name, d in ev["per_class"].items():

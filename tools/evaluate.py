@@ -132,7 +132,15 @@ def main():
     ap.add_argument("--out", default="runs/eval")
     args = ap.parse_args()
 
-    weights = load_model(args.weights)
+    # The backend decides what to load: the numpy path needs the exported
+    # weight dict, the torch path needs the checkpoint. Loading by --weights
+    # alone meant `--kind torch` handed a dict to code that expected a
+    # callable model, and the cross-check crashed instead of confirming
+    # anything.
+    if args.kind == "torch":
+        weights = load_model(args.weights if args.weights.endswith(".pt") else "runs/model.pt")
+    else:
+        weights = load_model(args.weights if args.weights.endswith(".npz") else "runs/weights.npz")
     out = ROOT / args.out
     out.mkdir(parents=True, exist_ok=True)
 

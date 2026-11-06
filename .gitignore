@@ -11,8 +11,16 @@ venv/
 #   runs/model.pt      26 KB — the torch checkpoint, for training and the
 #                        numpy-vs-torch equivalence check
 #
-# Only the evaluation scratch output is ignored.
-runs/eval/
+# The evaluation output is committed too. It used to be ignored as
+# "scratch", which was a mistake: the README states that every figure in
+# §5 comes from runs/eval/metrics.json, so a reviewer who cannot reach
+# that file cannot check the claim. It is 57 KB in total.
+#
+#   runs/eval/metrics.json    — the held-out evaluation (200 scenes)
+#   runs/eval/confusion.png   — the normalised confusion matrix
+#   runs/eval/report.md       — the same table in markdown
+#
+# Only the training scratch logs are ignored.
 runs/train_log.txt
 
 # Editors

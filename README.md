@@ -353,6 +353,8 @@ changes, the committed results are reproducible.
 
 Measured on **200 held-out synthetic scenes** generated from a seed range disjoint from the training range — no scene can appear in both.
 
+> **Where these numbers live.** `runs/eval/metrics.json` is the source of every figure in this section, and it is committed. `runs/metrics.json` is a *different* measurement: the validation split seen during training (seed 900000, 96 scenes). Its per-class IoUs are identical in method to the table below and its headline change IoU is close, but it is a smaller sample from a different seed range. The headline figures above are always the 200-scene held-out ones.
+
 | Class | IoU | Precision | Recall | F1 | Support (px) |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | no change | 0.995 | 0.997 | 0.999 | 0.998 | 3,132,618 |

@@ -10,15 +10,15 @@
     0.882139037433155
   ],
   "per_class_precision": [
-    0.9985656397845598,
-    0.8986818299302145,
-    0.6982445520581114,
-    0.5451070336391437,
-    0.9686424905532682,
-    0.7161676646706587,
-    0.9386593831796973
+    0.9969809941520468,
+    0.8877446808510638,
+    0.9068396226415094,
+    0.5265878877400295,
+    0.9767402183803457,
+    0.8118106227727813,
+    0.9361025990239473
   ],
-  "change_iou": 0.837667161961367,
+  "change_iou": 0.9077499414656989,
   "params": 5639,
   "train_seconds": 1128.4,
   "args": {
@@ -32,5 +32,6 @@
     "val_n": 96,
     "width": 16,
     "out": "runs"
-  }
+  },
+  "note": "change_iou was corrected on 2026-11-06: tools/train.py mixed a diagonal numerator with a binary union denominator, which read 0.838 instead of 0.908 on this same validation set. The authoritative held-out numbers are in runs/eval/metrics.json."
 }
