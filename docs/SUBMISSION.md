@@ -8,7 +8,7 @@
 
 | 字段               | 填写内容                                              |
 | ---------------- | ------------------------------------------------- |
-| **Team Name**    | `TerraWatch` （单人参赛，队长即本人）                         |
+| **Team Name**    | `winnerwinner` （报名时填的团队名；单人参赛，队长即本人）        |
 | **Project Name** | `TerraWatch — Satellite Surface Change Detection` |
 | **Team Size**    | `1`                                               |
 
